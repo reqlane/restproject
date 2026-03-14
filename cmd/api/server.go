@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"restproject/internal/api/middlewares"
 )
 
 type user struct {
@@ -15,7 +16,6 @@ type user struct {
 
 func rootHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Hello Root Route"))
-	fmt.Println("Hello Root Route")
 }
 
 func teachersHandler(w http.ResponseWriter, r *http.Request) {
@@ -69,7 +69,6 @@ func main() {
 	port := 3000
 	cert := "cert.pem"
 	key := "key.pem"
-
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/", rootHandler)
@@ -84,10 +83,9 @@ func main() {
 		MinVersion: tls.VersionTLS12,
 	}
 
-	// Create custom server
 	server := http.Server{
 		Addr:      fmt.Sprintf(":%d", port),
-		Handler:   mux,
+		Handler:   middlewares.SecurityHeaders(mux),
 		TLSConfig: tlsConfig,
 	}
 
