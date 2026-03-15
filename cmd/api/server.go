@@ -86,7 +86,7 @@ func main() {
 	server := http.Server{
 		Addr: fmt.Sprintf(":%d", port),
 		// Handler: mux,
-		Handler:   mw.Cors(mw.SecurityHeaders(mux)),
+		Handler:   mw.ResponseTime(mw.Cors(mw.SecurityHeaders(mux))),
 		TLSConfig: tlsConfig,
 	}
 
