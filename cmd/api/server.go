@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"restproject/internal/api/middlewares"
+	mw "restproject/internal/api/middlewares"
 )
 
 type user struct {
@@ -84,8 +84,9 @@ func main() {
 	}
 
 	server := http.Server{
-		Addr:      fmt.Sprintf(":%d", port),
-		Handler:   middlewares.SecurityHeaders(mux),
+		Addr: fmt.Sprintf(":%d", port),
+		// Handler: mux,
+		Handler:   mw.Cors(mw.SecurityHeaders(mux)),
 		TLSConfig: tlsConfig,
 	}
 
