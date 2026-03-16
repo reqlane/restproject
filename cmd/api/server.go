@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	mw "restproject/internal/api/middlewares"
+	"time"
 )
 
 type user struct {
@@ -70,6 +71,7 @@ func main() {
 	cert := "cert.pem"
 	key := "key.pem"
 	mux := http.NewServeMux()
+	rl := mw.NewRateLimiter(5, time.Minute)
 
 	mux.HandleFunc("/", rootHandler)
 
@@ -86,7 +88,7 @@ func main() {
 	server := http.Server{
 		Addr: fmt.Sprintf(":%d", port),
 		// Handler: mux,
-		Handler:   mw.ResponseTime(mw.Cors(mw.SecurityHeaders(mw.Compression(mux)))),
+		Handler:   mw.ResponseTime(rl.RateLimit(mw.Cors(mw.SecurityHeaders(mw.Compression(mux))))),
 		TLSConfig: tlsConfig,
 	}
 
