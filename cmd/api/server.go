@@ -87,10 +87,19 @@ func main() {
 		WhiteList:                   []string{"sortBy", "sortOrder", "name", "age", "class"},
 	}
 
+	secureMux := applyMiddlewares(mux,
+		mw.ResponseTime,
+		rl.RateLimit,
+		mw.Cors,
+		mw.SecurityHeaders,
+		mw.Hpp(hppOptions),
+		mw.Compression,
+	)
+
 	server := http.Server{
 		Addr: fmt.Sprintf(":%d", port),
 		// Handler: mux,
-		Handler:   mw.Cors(rl.RateLimit(mw.ResponseTime(mw.SecurityHeaders(mw.Compression(mw.Hpp(hppOptions)(mux)))))),
+		Handler:   secureMux,
 		TLSConfig: tlsConfig,
 	}
 
@@ -99,4 +108,13 @@ func main() {
 	if err != nil {
 		log.Fatalln("Error starting the server:", err)
 	}
+}
+
+type middleware func(http.Handler) http.Handler
+
+func applyMiddlewares(handler http.Handler, middlewares ...middleware) http.Handler {
+	for i := len(middlewares) - 1; i >= 0; i-- {
+		handler = middlewares[i](handler)
+	}
+	return handler
 }
