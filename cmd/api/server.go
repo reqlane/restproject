@@ -9,12 +9,6 @@ import (
 	"time"
 )
 
-type user struct {
-	Name string `json:"name"`
-	Age  int    `json:"age"`
-	City string `json:"city"`
-}
-
 func rootHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Hello Root Route"))
 }
@@ -71,7 +65,6 @@ func main() {
 	cert := "cert.pem"
 	key := "key.pem"
 	mux := http.NewServeMux()
-	rl := mw.NewRateLimiter(5, time.Minute)
 
 	mux.HandleFunc("/", rootHandler)
 
@@ -85,10 +78,19 @@ func main() {
 		MinVersion: tls.VersionTLS12,
 	}
 
+	rl := mw.NewRateLimiter(5, time.Minute)
+
+	hppOptions := mw.HPPOptions{
+		CheckQuery:                  true,
+		CheckBody:                   true,
+		CheckBodyOnlyForContentType: "application/x-www-form-urlencoded",
+		WhiteList:                   []string{"sortBy", "sortOrder", "name", "age", "class"},
+	}
+
 	server := http.Server{
 		Addr: fmt.Sprintf(":%d", port),
 		// Handler: mux,
-		Handler:   mw.ResponseTime(rl.RateLimit(mw.Cors(mw.SecurityHeaders(mw.Compression(mux))))),
+		Handler:   mw.ResponseTime(rl.RateLimit(mw.Hpp(hppOptions)(mw.Cors(mw.SecurityHeaders(mw.Compression(mux)))))),
 		TLSConfig: tlsConfig,
 	}
 

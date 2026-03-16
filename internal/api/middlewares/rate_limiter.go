@@ -1,7 +1,6 @@
 package middlewares
 
 import (
-	"fmt"
 	"net"
 	"net/http"
 	"sync"
@@ -46,8 +45,6 @@ func (rl *rateLimiter) RateLimit(next http.Handler) http.Handler {
 		}
 
 		rl.visitors[visitorIP]++
-		fmt.Printf("Visitor count from %v is %v\n", visitorIP, rl.visitors[visitorIP])
-
 		if rl.visitors[visitorIP] > rl.limit {
 			http.Error(w, "Too many requests", http.StatusTooManyRequests)
 			return
