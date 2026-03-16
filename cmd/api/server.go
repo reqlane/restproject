@@ -2,24 +2,148 @@ package main
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	mw "restproject/internal/api/middlewares"
-	"time"
+	"strconv"
+	"strings"
+	"sync"
 )
+
+type teacher struct {
+	ID        int    `json:"id,omitempty"`
+	FirstName string `json:"first_name,omitempty"`
+	LastName  string `json:"last_name,omitempty"`
+	Class     string `json:"class,omitempty"`
+	Subject   string `json:"subject,omitempty"`
+}
+
+var (
+	teachers = make(map[int]teacher)
+	mu       = &sync.Mutex{}
+	nextID   = 1
+)
+
+// Initialize some data
+func init() {
+	teachers[nextID] = teacher{
+		ID:        nextID,
+		FirstName: "John",
+		LastName:  "Doe",
+		Class:     "9A",
+		Subject:   "Math",
+	}
+	nextID++
+	teachers[nextID] = teacher{
+		ID:        nextID,
+		FirstName: "Jane",
+		LastName:  "Smith",
+		Class:     "10A",
+		Subject:   "Algebra",
+	}
+	nextID++
+	teachers[nextID] = teacher{
+		ID:        nextID,
+		FirstName: "Jane",
+		LastName:  "Doe",
+		Class:     "11A",
+		Subject:   "Biology",
+	}
+	nextID++
+}
+
+func getTeachersHandler(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/teachers/")
+	idStr := strings.TrimSuffix(path, "/")
+
+	if idStr == "" {
+		firstName := r.URL.Query().Get("first_name")
+		lastName := r.URL.Query().Get("last_name")
+
+		mu.Lock()
+		teacherList := make([]teacher, 0, len(teachers))
+		for _, teacher := range teachers {
+			if (firstName == "" || teacher.FirstName == firstName) && (lastName == "" || teacher.LastName == lastName) {
+				teacherList = append(teacherList, teacher)
+			}
+		}
+		mu.Unlock()
+
+		response := struct {
+			Status string    `json:"status"`
+			Count  int       `json:"count"`
+			Data   []teacher `json:"data"`
+		}{
+			Status: "success",
+			Count:  len(teacherList),
+			Data:   teacherList,
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+	} else {
+		// Handle Path parameter
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			http.Error(w, "Invalid ID format", http.StatusBadRequest)
+			return
+		}
+
+		mu.Lock()
+		teacher, exists := teachers[id]
+		mu.Unlock()
+		if !exists {
+			http.Error(w, "Teacher not found", http.StatusNotFound)
+			return
+		}
+		json.NewEncoder(w).Encode(teacher)
+	}
+}
+
+func postTeachersHandler(w http.ResponseWriter, r *http.Request) {
+	var newTeachers []teacher
+	err := json.NewDecoder(r.Body).Decode(&newTeachers)
+	if err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	mu.Lock()
+	addedTeachers := make([]teacher, len(newTeachers))
+	for i, newTeacher := range newTeachers {
+		newTeacher.ID = nextID
+		teachers[nextID] = newTeacher
+		addedTeachers[i] = newTeacher
+		nextID++
+	}
+	mu.Unlock()
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	response := struct {
+		Status string    `json:"status"`
+		Count  int       `json:"count"`
+		Data   []teacher `json:"data"`
+	}{
+		Status: "success",
+		Count:  len(addedTeachers),
+		Data:   addedTeachers,
+	}
+	json.NewEncoder(w).Encode(response)
+}
 
 func rootHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Hello Root Route"))
 }
 
 func teachersHandler(w http.ResponseWriter, r *http.Request) {
-
 	switch r.Method {
 	case http.MethodGet:
-		w.Write([]byte("Hello GET Method on Teachers Route"))
+		getTeachersHandler(w, r)
 	case http.MethodPost:
-		w.Write([]byte("Hello POST Method on Teachers Route"))
+		postTeachersHandler(w, r)
 	case http.MethodPut:
 		w.Write([]byte("Hello PUT Method on Teachers Route"))
 	case http.MethodPatch:
@@ -78,23 +202,24 @@ func main() {
 		MinVersion: tls.VersionTLS12,
 	}
 
-	rl := mw.NewRateLimiter(5, time.Minute)
+	// rl := mw.NewRateLimiter(5, time.Minute)
 
-	hppOptions := mw.HPPOptions{
-		CheckQuery:                  true,
-		CheckBody:                   true,
-		CheckBodyOnlyForContentType: "application/x-www-form-urlencoded",
-		WhiteList:                   []string{"sortBy", "sortOrder", "name", "age", "class"},
-	}
+	// hppOptions := mw.HPPOptions{
+	// 	CheckQuery:                  true,
+	// 	CheckBody:                   true,
+	// 	CheckBodyOnlyForContentType: "application/x-www-form-urlencoded",
+	// 	WhiteList:                   []string{"sortBy", "sortOrder", "name", "age", "class"},
+	// }
 
-	secureMux := applyMiddlewares(mux,
-		mw.ResponseTime,
-		rl.RateLimit,
-		mw.Cors,
-		mw.SecurityHeaders,
-		mw.Hpp(hppOptions),
-		mw.Compression,
-	)
+	// secureMux := applyMiddlewares(mux,
+	// 	mw.ResponseTime,
+	// 	rl.RateLimit,
+	// 	mw.Cors,
+	// 	mw.SecurityHeaders,
+	// 	mw.Hpp(hppOptions),
+	// 	mw.Compression,
+	// )
+	secureMux := mw.SecurityHeaders(mux)
 
 	server := http.Server{
 		Addr: fmt.Sprintf(":%d", port),
