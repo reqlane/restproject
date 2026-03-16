@@ -7,24 +7,24 @@ import (
 	"strings"
 )
 
-type HPPOptions struct {
+type HPPConfig struct {
 	CheckQuery                  bool
 	CheckBody                   bool
 	CheckBodyOnlyForContentType string
 	WhiteList                   []string
 }
 
-func Hpp(options HPPOptions) func(http.Handler) http.Handler {
+func Hpp(config HPPConfig) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if options.CheckQuery && r.URL.Query() != nil {
+			if config.CheckQuery && r.URL.Query() != nil {
 				// Filter the query params
-				filterQueryParams(r, options.WhiteList)
+				filterQueryParams(r, config.WhiteList)
 			}
 
-			if options.CheckBody && r.Method == http.MethodPost && isCorrectContentType(r, options.CheckBodyOnlyForContentType) {
+			if config.CheckBody && r.Method == http.MethodPost && isCorrectContentType(r, config.CheckBodyOnlyForContentType) {
 				// Filter the body params
-				filterBodyParams(r, options.WhiteList)
+				filterBodyParams(r, config.WhiteList)
 			}
 
 			next.ServeHTTP(w, r)
