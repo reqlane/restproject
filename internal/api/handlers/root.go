@@ -1,7 +1,18 @@
 package handlers
 
-import "net/http"
+import (
+	"database/sql"
+	"net/http"
+)
 
-func RootHandler(w http.ResponseWriter, r *http.Request) {
+type rootHandler struct {
+	db *sql.DB
+}
+
+func NewRootHandler(db *sql.DB) *rootHandler {
+	return &rootHandler{db: db}
+}
+
+func (h *rootHandler) RootHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Hello Root Route"))
 }

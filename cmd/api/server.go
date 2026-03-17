@@ -20,16 +20,19 @@ func main() {
 		return
 	}
 
-	_, err = sqlconnect.ConnectDb()
+	db, err := sqlconnect.ConnectDb()
 	if err != nil {
 		fmt.Println("Error:", err)
 		return
 	}
+	defer db.Close()
 
 	port := os.Getenv("SERVER_PORT")
 	cert := "cert.pem"
 	key := "key.pem"
-	router := router.Router()
+
+	app := router.NewApp(db)
+	mux := app.Router()
 
 	tlsConfig := &tls.Config{
 		MinVersion: tls.VersionTLS12,
@@ -52,7 +55,7 @@ func main() {
 	// 	mw.Hpp(hppConfig),
 	// 	mw.Compression,
 	// )
-	secureMux := mw.SecurityHeaders(router)
+	secureMux := mw.SecurityHeaders(mux)
 
 	server := http.Server{
 		Addr: ":" + port,

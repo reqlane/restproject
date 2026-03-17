@@ -1,8 +1,19 @@
 package handlers
 
-import "net/http"
+import (
+	"database/sql"
+	"net/http"
+)
 
-func ExecsHandler(w http.ResponseWriter, r *http.Request) {
+type execsHandler struct {
+	db *sql.DB
+}
+
+func NewExecsHandler(db *sql.DB) *execsHandler {
+	return &execsHandler{db: db}
+}
+
+func (h *execsHandler) ExecsHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		w.Write([]byte("Hello GET Method on Execs Route"))

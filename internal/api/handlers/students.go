@@ -1,8 +1,19 @@
 package handlers
 
-import "net/http"
+import (
+	"database/sql"
+	"net/http"
+)
 
-func StudentsHandler(w http.ResponseWriter, r *http.Request) {
+type studentsHandler struct {
+	db *sql.DB
+}
+
+func NewStudentsHandler(db *sql.DB) *studentsHandler {
+	return &studentsHandler{db: db}
+}
+
+func (h *studentsHandler) StudentsHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		w.Write([]byte("Hello GET Method on Students Route"))
