@@ -5,13 +5,28 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	mw "restproject/internal/api/middlewares"
 	"restproject/internal/api/router"
+	"restproject/internal/repository/sqlconnect"
+
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	err := godotenv.Load("../../.env")
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
 
-	port := 3000
+	_, err = sqlconnect.ConnectDb()
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
+	port := os.Getenv("SERVER_PORT")
 	cert := "cert.pem"
 	key := "key.pem"
 	router := router.Router()
@@ -40,14 +55,14 @@ func main() {
 	secureMux := mw.SecurityHeaders(router)
 
 	server := http.Server{
-		Addr: fmt.Sprintf(":%d", port),
+		Addr: ":" + port,
 		// Handler: mux,
 		Handler:   secureMux,
 		TLSConfig: tlsConfig,
 	}
 
 	fmt.Println("Server is running on port:", port)
-	err := server.ListenAndServeTLS(cert, key)
+	err = server.ListenAndServeTLS(cert, key)
 	if err != nil {
 		log.Fatalln("Error starting the server:", err)
 	}
