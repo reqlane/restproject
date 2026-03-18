@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"reflect"
 	"restproject/internal/models"
 	"strconv"
 	"strings"
@@ -272,18 +273,34 @@ func (h *teachersHandler) patchTeachersHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	// Apply updates using just type assertion
+	// for k, v := range updates {
+	// 	switch k {
+	// 	case "first_name":
+	// 		existingTeacher.FirstName = v.(string)
+	// 	case "last_name":
+	// 		existingTeacher.LastName = v.(string)
+	// 	case "email":
+	// 		existingTeacher.Email = v.(string)
+	// 	case "class":
+	// 		existingTeacher.Class = v.(string)
+	// 	case "subject":
+	// 		existingTeacher.Subject = v.(string)
+	// 	}
+	// }
+
+	// Apply updates using reflect
+	teacherVal := reflect.ValueOf(&existingTeacher).Elem()
+	teacherType := teacherVal.Type()
+
 	for k, v := range updates {
-		switch k {
-		case "first_name":
-			existingTeacher.FirstName = v.(string)
-		case "last_name":
-			existingTeacher.LastName = v.(string)
-		case "email":
-			existingTeacher.Email = v.(string)
-		case "class":
-			existingTeacher.Class = v.(string)
-		case "subject":
-			existingTeacher.Subject = v.(string)
+		for i := 0; i < teacherVal.NumField(); i++ {
+			typeField := teacherType.Field(i)
+			valField := teacherVal.Field(i)
+			jsonName := strings.Split(typeField.Tag.Get("json"), ",")[0]
+			if jsonName == k && valField.CanSet() {
+				valField.Set(reflect.ValueOf(v).Convert(typeField.Type))
+			}
 		}
 	}
 
