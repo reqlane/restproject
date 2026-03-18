@@ -26,11 +26,11 @@ func (h *teachersHandler) TeachersHandler(w http.ResponseWriter, r *http.Request
 	case http.MethodPost:
 		h.postTeachersHandler(w, r)
 	case http.MethodPut:
-		h.updateTeachersHandler(w, r)
+		h.updateTeacherHandler(w, r)
 	case http.MethodPatch:
-		h.patchTeachersHandler(w, r)
+		h.patchTeacherHandler(w, r)
 	case http.MethodDelete:
-		w.Write([]byte("Hello DELETE Method on Teachers Route"))
+		h.deleteTeacherHandler(w, r)
 	}
 }
 
@@ -206,7 +206,7 @@ func (h *teachersHandler) postTeachersHandler(w http.ResponseWriter, r *http.Req
 }
 
 // PUT /teachers/{id}
-func (h *teachersHandler) updateTeachersHandler(w http.ResponseWriter, r *http.Request) {
+func (h *teachersHandler) updateTeacherHandler(w http.ResponseWriter, r *http.Request) {
 	idStr := strings.TrimPrefix(r.URL.Path, "/teachers/")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -246,7 +246,7 @@ func (h *teachersHandler) updateTeachersHandler(w http.ResponseWriter, r *http.R
 }
 
 // PATCH /teachers/{id}
-func (h *teachersHandler) patchTeachersHandler(w http.ResponseWriter, r *http.Request) {
+func (h *teachersHandler) patchTeacherHandler(w http.ResponseWriter, r *http.Request) {
 	idStr := strings.TrimPrefix(r.URL.Path, "/teachers/")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -313,4 +313,46 @@ func (h *teachersHandler) patchTeachersHandler(w http.ResponseWriter, r *http.Re
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(existingTeacher)
+}
+
+// PATCH /teachers/{id}
+func (h *teachersHandler) deleteTeacherHandler(w http.ResponseWriter, r *http.Request) {
+	idStr := strings.TrimPrefix(r.URL.Path, "/teachers/")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "Invalid teacher ID", http.StatusBadRequest)
+		return
+	}
+
+	query := `DELETE FROM teachers WHERE id = ?`
+	result, err := h.db.Exec(query, id)
+	if err != nil {
+		http.Error(w, "Error deleting teacher", http.StatusInternalServerError)
+		return
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		http.Error(w, "Error retrieving delete result", http.StatusInternalServerError)
+		return
+	}
+
+	if rowsAffected == 0 {
+		http.Error(w, "Teacher not found", http.StatusNotFound)
+		return
+	}
+
+	// No response body
+	// w.WriteHeader(http.StatusNoContent)
+
+	// Response Body
+	w.Header().Set("Content-Type", "application/json")
+	response := struct {
+		Status string `json:"status"`
+		ID     int    `json:"id"`
+	}{
+		Status: "Teacher successfully deleted",
+		ID:     id,
+	}
+	json.NewEncoder(w).Encode(response)
 }
