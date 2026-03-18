@@ -33,6 +33,21 @@ func (h *teachersHandler) TeachersHandler(w http.ResponseWriter, r *http.Request
 	}
 }
 
+func isValidSortOrder(order string) bool {
+	return order == "asc" || order == "desc"
+}
+
+func isValidSortField(field string) bool {
+	validFields := map[string]bool{
+		"first_name": true,
+		"last_name":  true,
+		"email":      true,
+		"class":      true,
+		"subject":    true,
+	}
+	return validFields[field]
+}
+
 func (h *teachersHandler) getTeachersHandler(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/teachers/")
 	idStr := strings.TrimSuffix(path, "/")
@@ -43,6 +58,8 @@ func (h *teachersHandler) getTeachersHandler(w http.ResponseWriter, r *http.Requ
 		var args []any
 
 		args = addFilters(r, &query, args)
+
+		addSorting(r, &query)
 
 		rows, err := h.db.Query(query.String(), args...)
 		if err != nil {
@@ -117,6 +134,27 @@ func addFilters(r *http.Request, query *strings.Builder, args []any) []any {
 		}
 	}
 	return args
+}
+
+func addSorting(r *http.Request, query *strings.Builder) {
+	sortParams := r.URL.Query()["sortby"]
+	if len(sortParams) > 0 {
+		query.WriteString(" ORDER BY")
+		for i, param := range sortParams {
+			parts := strings.Split(param, ":")
+			if len(parts) != 2 {
+				continue
+			}
+			field, order := parts[0], parts[1]
+			if !isValidSortField(field) || !isValidSortOrder(order) {
+				continue
+			}
+			if i > 0 {
+				query.WriteString(",")
+			}
+			query.WriteString(" " + field + " " + order)
+		}
+	}
 }
 
 func (h *teachersHandler) postTeachersHandler(w http.ResponseWriter, r *http.Request) {
