@@ -178,12 +178,12 @@ func (h *teachersHandler) PostTeachersHandler(w http.ResponseWriter, r *http.Req
 
 	addedTeachers := make([]models.Teacher, len(newTeachers))
 	for i, newTeacher := range newTeachers {
-		res, err := stmt.Exec(newTeacher.FirstName, newTeacher.LastName, newTeacher.Email, newTeacher.Class, newTeacher.Subject)
+		result, err := stmt.Exec(newTeacher.FirstName, newTeacher.LastName, newTeacher.Email, newTeacher.Class, newTeacher.Subject)
 		if err != nil {
 			http.Error(w, "Error inserting data into database", http.StatusInternalServerError)
 			return
 		}
-		lastID, err := res.LastInsertId()
+		lastID, err := result.LastInsertId()
 		if err != nil {
 			http.Error(w, "Error getting last inserted ID", http.StatusInternalServerError)
 			return
@@ -429,7 +429,71 @@ func (h *teachersHandler) PatchSingleTeacherHandler(w http.ResponseWriter, r *ht
 
 // DELETE /teachers/
 func (h *teachersHandler) DeleteTeachersHandler(w http.ResponseWriter, r *http.Request) {
+	var ids []int
+	err := json.NewDecoder(r.Body).Decode(&ids)
+	if err != nil {
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
 
+	tx, err := h.db.Begin()
+	if err != nil {
+		http.Error(w, "Error starting transaction", http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback()
+
+	query := `DELETE FROM teachers WHERE id=?`
+	stmt, err := tx.Prepare(query)
+	if err != nil {
+		http.Error(w, "Error preparing delete statement", http.StatusInternalServerError)
+		return
+	}
+	defer stmt.Close()
+
+	deletedIds := []int{}
+
+	for _, id := range ids {
+		result, err := stmt.Exec(id)
+		if err != nil {
+			http.Error(w, "Error deleting teacher", http.StatusInternalServerError)
+			return
+		}
+
+		rowsAffected, err := result.RowsAffected()
+		if err != nil {
+			http.Error(w, "Error retrieving delete result", http.StatusInternalServerError)
+			return
+		}
+
+		if rowsAffected < 1 {
+			http.Error(w, fmt.Sprintf("ID %d does not exist", id), http.StatusInternalServerError)
+			return
+		}
+
+		deletedIds = append(deletedIds, id)
+	}
+
+	if len(deletedIds) < 1 {
+		http.Error(w, "IDs do not exist", http.StatusNotFound)
+		return
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		http.Error(w, "Error committing transaction", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	response := struct {
+		Status     string `json:"status"`
+		DeletedIDs []int  `json:"deleted_ids"`
+	}{
+		Status:     "Teacher successfully deleted",
+		DeletedIDs: deletedIds,
+	}
+	json.NewEncoder(w).Encode(response)
 }
 
 // DELETE /teachers/{id}
@@ -455,7 +519,7 @@ func (h *teachersHandler) DeleteSingleTeacherHandler(w http.ResponseWriter, r *h
 		return
 	}
 
-	if rowsAffected == 0 {
+	if rowsAffected < 1 {
 		http.Error(w, "Teacher not found", http.StatusNotFound)
 		return
 	}
