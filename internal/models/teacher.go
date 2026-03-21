@@ -8,3 +8,8 @@ type Teacher struct {
 	Class     string `json:"class,omitempty"`
 	Subject   string `json:"subject,omitempty"`
 }
+
+type TeacherCriteria struct {
+	Filters  map[string]string
+	Sortings []string
+}
