@@ -8,7 +8,7 @@ import (
 	"os"
 	mw "restproject/internal/api/middlewares"
 	"restproject/internal/api/router"
-	"restproject/internal/repository/sqlconnect"
+	"restproject/internal/db"
 
 	"github.com/joho/godotenv"
 )
@@ -20,7 +20,7 @@ func main() {
 		return
 	}
 
-	db, err := sqlconnect.ConnectDb()
+	db, err := db.ConnectDb()
 	if err != nil {
 		fmt.Println("Error:", err)
 		return

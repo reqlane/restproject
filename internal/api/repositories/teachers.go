@@ -2,7 +2,9 @@ package repositories
 
 import (
 	"database/sql"
-	"restproject/internal/models"
+	"fmt"
+	"restproject/internal/api/models"
+	"restproject/internal/apperrors"
 	"strings"
 )
 
@@ -12,6 +14,16 @@ type TeacherRepository struct {
 
 func NewTeacherRepository(db *sql.DB) *TeacherRepository {
 	return &TeacherRepository{db: db}
+}
+
+func (r *TeacherRepository) GetByID(id int) (*models.Teacher, error) {
+	var teacher models.Teacher
+	query := `SELECT id, first_name, last_name, email, class, subject FROM teachers WHERE id=?`
+	err := r.db.QueryRow(query, id).Scan(&teacher.ID, &teacher.FirstName, &teacher.LastName, &teacher.Email, &teacher.Class, &teacher.Subject)
+	if err != nil {
+		return nil, fmt.Errorf("repo.GetByID: %w", err)
+	}
+	return &teacher, nil
 }
 
 func (r *TeacherRepository) GetAllByCriteria(criteria models.TeacherCriteria) ([]models.Teacher, error) {
@@ -28,7 +40,7 @@ func (r *TeacherRepository) GetAllByCriteria(criteria models.TeacherCriteria) ([
 
 	rows, err := r.db.Query(query.String(), args...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("repo.GetAllByCriteria: %w", err)
 	}
 	defer rows.Close()
 
@@ -37,14 +49,14 @@ func (r *TeacherRepository) GetAllByCriteria(criteria models.TeacherCriteria) ([
 		var teacher models.Teacher
 		err = rows.Scan(&teacher.ID, &teacher.FirstName, &teacher.LastName, &teacher.Email, &teacher.Class, &teacher.Subject)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("repo.GetAllByCriteria: %w", err)
 		}
 		teachers = append(teachers, teacher)
 	}
 
 	err = rows.Err()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("repo.GetAllByCriteria: %w", err)
 	}
 	return teachers, nil
 }
@@ -86,56 +98,54 @@ func isValidSortField(field string) bool {
 	return validFields[field]
 }
 
-func (r *TeacherRepository) GetByID(id int) (*models.Teacher, error) {
-	var teacher models.Teacher
-	query := `SELECT id, first_name, last_name, email, class, subject FROM teachers WHERE id=?`
-	err := r.db.QueryRow(query, id).Scan(&teacher.ID, &teacher.FirstName, &teacher.LastName, &teacher.Email, &teacher.Class, &teacher.Subject)
-	if err == sql.ErrNoRows {
-		return nil, err
-	}
-	if err != nil {
-		return nil, err
-	}
-	return &teacher, nil
-}
-
 func (r *TeacherRepository) SaveAll(teachers []models.Teacher) ([]models.Teacher, error) {
 	tx, err := r.db.Begin()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("repo.SaveAll: %w", err)
 	}
 	defer tx.Rollback()
 
 	stmt, err := tx.Prepare(`INSERT INTO teachers (first_name, last_name, email, class, subject) VALUES (?,?,?,?,?)`)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("repo.SaveAll: %w", err)
 	}
 	defer stmt.Close()
 
 	for i, newTeacher := range teachers {
 		result, err := stmt.Exec(newTeacher.FirstName, newTeacher.LastName, newTeacher.Email, newTeacher.Class, newTeacher.Subject)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("repo.SaveAll: %w", err)
 		}
 		lastID, err := result.LastInsertId()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("repo.SaveAll: %w", err)
 		}
 		teachers[i].ID = int(lastID)
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("repo.SaveAll: %w", err)
 	}
 	return teachers, nil
 }
 
 func (r *TeacherRepository) Update(teacher *models.Teacher) (*models.Teacher, error) {
 	query := `UPDATE teachers SET first_name=?, last_name=?, email=?, class=?, subject=? WHERE id=?`
-	_, err := r.db.Exec(query, teacher.FirstName, teacher.LastName, teacher.Email, teacher.Class, teacher.Subject, teacher.ID)
+	result, err := r.db.Exec(query, teacher.FirstName, teacher.LastName, teacher.Email, teacher.Class, teacher.Subject, teacher.ID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("repo.Update: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return nil, fmt.Errorf("repo.Update: %w", err)
+	}
+	if rowsAffected < 1 {
+		_, err := r.GetByID(teacher.ID)
+		if err != nil {
+			return nil, fmt.Errorf("repo.Update: %w", err)
+		}
 	}
 	return teacher, nil
 }
@@ -143,26 +153,37 @@ func (r *TeacherRepository) Update(teacher *models.Teacher) (*models.Teacher, er
 func (r *TeacherRepository) UpdateAll(teachers []models.Teacher) ([]models.Teacher, error) {
 	tx, err := r.db.Begin()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("repo.UpdateAll: %w", err)
 	}
 	defer tx.Rollback()
 
 	updateStmt, err := tx.Prepare(`UPDATE teachers SET first_name=?, last_name=?, email=?, class=?, subject=? WHERE id=?`)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("repo.UpdateAll: %w", err)
 	}
 	defer updateStmt.Close()
 
 	for _, teacher := range teachers {
-		_, err = updateStmt.Exec(teacher.FirstName, teacher.LastName, teacher.Email, teacher.Class, teacher.Subject, teacher.ID)
+		result, err := updateStmt.Exec(teacher.FirstName, teacher.LastName, teacher.Email, teacher.Class, teacher.Subject, teacher.ID)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("repo.UpdateAll: %w", err)
+		}
+
+		rowsAffected, err := result.RowsAffected()
+		if err != nil {
+			return nil, fmt.Errorf("repo.UpdateAll: %w", err)
+		}
+		if rowsAffected < 1 {
+			_, err := r.GetByID(teacher.ID)
+			if err != nil {
+				return nil, fmt.Errorf("repo.UpdateAll: %w", err)
+			}
 		}
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("repo.UpdateAll: %w", err)
 	}
 	return teachers, nil
 }
@@ -171,14 +192,14 @@ func (r *TeacherRepository) Delete(id int) error {
 	query := `DELETE FROM teachers WHERE id=?`
 	result, err := r.db.Exec(query, id)
 	if err != nil {
-		return err
+		return fmt.Errorf("repo.Delete: %w", err)
 	}
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		return err
+		return fmt.Errorf("repo.Delete: %w", err)
 	}
 	if rowsAffected < 1 {
-		return err
+		return fmt.Errorf("repo.Delete: %w", apperrors.ErrNotFound)
 	}
 	return nil
 }
@@ -186,14 +207,14 @@ func (r *TeacherRepository) Delete(id int) error {
 func (r *TeacherRepository) DeleteAll(ids []int) ([]int, error) {
 	tx, err := r.db.Begin()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("repo.DeleteAll: %w", err)
 	}
 	defer tx.Rollback()
 
 	query := `DELETE FROM teachers WHERE id=?`
 	stmt, err := tx.Prepare(query)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("repo.DeleteAll: %w", err)
 	}
 	defer stmt.Close()
 
@@ -202,22 +223,23 @@ func (r *TeacherRepository) DeleteAll(ids []int) ([]int, error) {
 	for _, id := range ids {
 		result, err := stmt.Exec(id)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("repo.DeleteAll: %w", err)
 		}
 
 		rowsAffected, err := result.RowsAffected()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("repo.DeleteAll: %w", err)
 		}
 
-		if rowsAffected > 0 {
-			deletedIds = append(deletedIds, id)
+		if rowsAffected < 1 {
+			return nil, fmt.Errorf("repo.DeleteAll: %w", apperrors.ErrNotFound)
 		}
+		deletedIds = append(deletedIds, id)
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("repo.DeleteAll: %w", err)
 	}
 	return deletedIds, nil
 }

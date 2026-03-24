@@ -1,23 +1,38 @@
 package handlers
 
 import (
-	"database/sql"
 	"encoding/json"
-	"fmt"
 	"net/http"
-	"reflect"
-	"restproject/internal/models"
-	"restproject/internal/repository/repositories"
+	"restproject/internal/api/models"
+	"restproject/internal/api/services"
 	"strconv"
-	"strings"
 )
 
 type teachersHandler struct {
-	repo *repositories.TeacherRepository
+	service *services.TeachersService
 }
 
-func NewTeachersHandler(db *sql.DB) *teachersHandler {
-	return &teachersHandler{repo: repositories.NewTeacherRepository(db)}
+func NewTeachersHandler(service *services.TeachersService) *teachersHandler {
+	return &teachersHandler{service: service}
+}
+
+// GET /teachers/{id}
+func (h *teachersHandler) GetSingleTeacherHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "Invalid ID format", http.StatusBadRequest)
+		return
+	}
+
+	teacher, err := h.service.GetByID(id)
+	if err != nil {
+		// TODO all errors handling
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(teacher)
 }
 
 // GET /teachers/
@@ -28,8 +43,9 @@ func (h *teachersHandler) GetTeachersHandler(w http.ResponseWriter, r *http.Requ
 	}
 	addFiltersCriteria(r, &criteria)
 
-	teachers, err := h.repo.GetAllByCriteria(criteria)
+	teachers, err := h.service.GetAllByCriteria(criteria)
 	if err != nil {
+		// TODO all errors handling
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -65,26 +81,6 @@ func addFiltersCriteria(r *http.Request, criteria *models.TeacherCriteria) {
 	}
 }
 
-// GET /teachers/{id}
-func (h *teachersHandler) GetSingleTeacherHandler(w http.ResponseWriter, r *http.Request) {
-	idStr := r.PathValue("id")
-
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		http.Error(w, "Invalid ID format", http.StatusBadRequest)
-		return
-	}
-
-	teacher, err := h.repo.GetByID(id)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(teacher)
-}
-
 // POST /teachers/
 func (h *teachersHandler) PostTeachersHandler(w http.ResponseWriter, r *http.Request) {
 	var newTeachers []models.Teacher
@@ -94,8 +90,9 @@ func (h *teachersHandler) PostTeachersHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	addedTeachers, err := h.repo.SaveAll(newTeachers)
+	addedTeachers, err := h.service.SaveAll(newTeachers)
 	if err != nil {
+		// TODO all errors handling
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -116,9 +113,7 @@ func (h *teachersHandler) PostTeachersHandler(w http.ResponseWriter, r *http.Req
 
 // PUT /teachers/{id}
 func (h *teachersHandler) PutSingleTeacherHandler(w http.ResponseWriter, r *http.Request) {
-	idStr := r.PathValue("id")
-
-	id, err := strconv.Atoi(idStr)
+	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
 		http.Error(w, "Invalid teacher ID", http.StatusBadRequest)
 		return
@@ -131,15 +126,9 @@ func (h *teachersHandler) PutSingleTeacherHandler(w http.ResponseWriter, r *http
 		return
 	}
 
-	dbTeacher, err := h.repo.GetByID(id)
+	result, err := h.service.Replace(id, &updatedTeacher)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	updatedTeacher.ID = dbTeacher.ID
-	result, err := h.repo.Update(&updatedTeacher)
-	if err != nil {
+		// TODO all errors handling
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -148,91 +137,9 @@ func (h *teachersHandler) PutSingleTeacherHandler(w http.ResponseWriter, r *http
 	json.NewEncoder(w).Encode(result)
 }
 
-// PATCH /teachers/
-func (h *teachersHandler) PatchTeachersHandler(w http.ResponseWriter, r *http.Request) {
-	var updates []map[string]any
-	err := json.NewDecoder(r.Body).Decode(&updates)
-	if err != nil {
-		http.Error(w, "Invalid request payload", http.StatusBadRequest)
-		return
-	}
-
-	updatedTeachers := make([]models.Teacher, 0, len(updates))
-
-	for _, update := range updates {
-		idRaw, exists := update["id"]
-		if !exists {
-			http.Error(w, "Teacher ID required", http.StatusBadRequest)
-			return
-		}
-
-		var id int
-		switch v := idRaw.(type) {
-		case float64:
-			id = int(v)
-		case int:
-			id = v
-		case string:
-			id, err = strconv.Atoi(v)
-			if err != nil {
-				http.Error(w, "Error converting ID to int", http.StatusInternalServerError)
-				return
-			}
-		default:
-			http.Error(w, "Invalid ID format", http.StatusBadRequest)
-			return
-		}
-
-		dbTeacher, err := h.repo.GetByID(id)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		teacherVal := reflect.ValueOf(dbTeacher).Elem()
-		teacherType := teacherVal.Type()
-
-		for k, v := range update {
-			if k == "id" {
-				continue
-			}
-			for i := 0; i < teacherVal.NumField(); i++ {
-				typeField := teacherType.Field(i)
-				valField := teacherVal.Field(i)
-				jsonName := strings.Split(typeField.Tag.Get("json"), ",")[0]
-				if jsonName == k {
-					if valField.CanSet() {
-						value := reflect.ValueOf(v)
-						if value.Type().ConvertibleTo(typeField.Type) {
-							valField.Set(value.Convert(typeField.Type))
-						} else {
-							http.Error(w, fmt.Sprintf("Invalid type for field %s", k), http.StatusBadRequest)
-							return
-						}
-					}
-					break
-				}
-			}
-		}
-
-		updatedTeachers = append(updatedTeachers, *dbTeacher)
-	}
-
-	updatedTeachers, err = h.repo.UpdateAll(updatedTeachers)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(updatedTeachers)
-}
-
 // PATCH /teachers/{id}
 func (h *teachersHandler) PatchSingleTeacherHandler(w http.ResponseWriter, r *http.Request) {
-	idStr := r.PathValue("id")
-
-	id, err := strconv.Atoi(idStr)
+	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
 		http.Error(w, "Invalid teacher ID", http.StatusBadRequest)
 		return
@@ -245,40 +152,9 @@ func (h *teachersHandler) PatchSingleTeacherHandler(w http.ResponseWriter, r *ht
 		return
 	}
 
-	dbTeacher, err := h.repo.GetByID(id)
+	updatedTeacher, err := h.service.Update(id, update)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	teacherVal := reflect.ValueOf(dbTeacher).Elem()
-	teacherType := teacherVal.Type()
-
-	for k, v := range update {
-		if k == "id" {
-			continue
-		}
-		for i := 0; i < teacherVal.NumField(); i++ {
-			typeField := teacherType.Field(i)
-			valField := teacherVal.Field(i)
-			jsonName := strings.Split(typeField.Tag.Get("json"), ",")[0]
-			if jsonName == k {
-				if valField.CanSet() {
-					value := reflect.ValueOf(v)
-					if value.Type().ConvertibleTo(typeField.Type) {
-						valField.Set(value.Convert(typeField.Type))
-					} else {
-						http.Error(w, fmt.Sprintf("Invalid type for field %s", k), http.StatusBadRequest)
-						return
-					}
-				}
-				break
-			}
-		}
-	}
-
-	updatedTeacher, err := h.repo.Update(dbTeacher)
-	if err != nil {
+		// TODO all errors handling
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -287,49 +163,37 @@ func (h *teachersHandler) PatchSingleTeacherHandler(w http.ResponseWriter, r *ht
 	json.NewEncoder(w).Encode(updatedTeacher)
 }
 
-// DELETE /teachers/
-func (h *teachersHandler) DeleteTeachersHandler(w http.ResponseWriter, r *http.Request) {
-	var ids []int
-	err := json.NewDecoder(r.Body).Decode(&ids)
+// PATCH /teachers/
+func (h *teachersHandler) PatchTeachersHandler(w http.ResponseWriter, r *http.Request) {
+	var updates []map[string]any
+	err := json.NewDecoder(r.Body).Decode(&updates)
 	if err != nil {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
 	}
 
-	deletedIds, err := h.repo.DeleteAll(ids)
+	updatedTeachers, err := h.service.UpdateAll(updates)
 	if err != nil {
+		// TODO all errors handling
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	if len(deletedIds) < 1 {
-		http.Error(w, "IDs do not exist", http.StatusNotFound)
-		return
-	}
-
 	w.Header().Set("Content-Type", "application/json")
-	response := struct {
-		Status     string `json:"status"`
-		DeletedIDs []int  `json:"deleted_ids"`
-	}{
-		Status:     "success",
-		DeletedIDs: deletedIds,
-	}
-	json.NewEncoder(w).Encode(response)
+	json.NewEncoder(w).Encode(updatedTeachers)
 }
 
 // DELETE /teachers/{id}
 func (h *teachersHandler) DeleteSingleTeacherHandler(w http.ResponseWriter, r *http.Request) {
-	idStr := r.PathValue("id")
-
-	id, err := strconv.Atoi(idStr)
+	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
 		http.Error(w, "Invalid teacher ID", http.StatusBadRequest)
 		return
 	}
 
-	err = h.repo.Delete(id)
+	err = h.service.Delete(id)
 	if err != nil {
+		// TODO all errors handling
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -341,6 +205,33 @@ func (h *teachersHandler) DeleteSingleTeacherHandler(w http.ResponseWriter, r *h
 	}{
 		Status: "success",
 		ID:     id,
+	}
+	json.NewEncoder(w).Encode(response)
+}
+
+// DELETE /teachers/
+func (h *teachersHandler) DeleteTeachersHandler(w http.ResponseWriter, r *http.Request) {
+	var ids []int
+	err := json.NewDecoder(r.Body).Decode(&ids)
+	if err != nil {
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+
+	deletedIds, err := h.service.DeleteAll(ids)
+	if err != nil {
+		// TODO all errors handling
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	response := struct {
+		Status     string `json:"status"`
+		DeletedIDs []int  `json:"deleted_ids"`
+	}{
+		Status:     "success",
+		DeletedIDs: deletedIds,
 	}
 	json.NewEncoder(w).Encode(response)
 }
