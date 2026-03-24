@@ -1,6 +1,8 @@
 package services
 
 import (
+	"database/sql"
+	"errors"
 	"fmt"
 	"reflect"
 	"restproject/internal/api/models"
@@ -19,10 +21,20 @@ func NewTeachersService(repo *repositories.TeacherRepository) *TeachersService {
 }
 
 func (s *TeachersService) GetByID(id int) (*models.Teacher, error) {
+	teacher, err := s.getByID(id)
+	if err != nil {
+		return nil, fmt.Errorf("service.getByID: %w", err)
+	}
+	return teacher, nil
+}
+
+func (s *TeachersService) getByID(id int) (*models.Teacher, error) {
 	teacher, err := s.repo.GetByID(id)
 	if err != nil {
-		// TODO all errors handling
-		return nil, fmt.Errorf("service.GetByID: %w", err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, apperrors.ErrNotFound
+		}
+		return nil, err
 	}
 	return teacher, nil
 }
@@ -30,43 +42,41 @@ func (s *TeachersService) GetByID(id int) (*models.Teacher, error) {
 func (s *TeachersService) GetAllByCriteria(criteria models.TeacherCriteria) ([]models.Teacher, error) {
 	teachers, err := s.repo.GetAllByCriteria(criteria)
 	if err != nil {
-		// TODO all errors handling
 		return nil, fmt.Errorf("service.GetAllByCriteria: %w", err)
 	}
 	return teachers, nil
 }
 
 func (s *TeachersService) SaveAll(teachers []models.Teacher) ([]models.Teacher, error) {
-	// TODO fields validation
+	// TODO teachers fields validation
 	teachers, err := s.repo.SaveAll(teachers)
 	if err != nil {
-		// TODO all errors handling
-		return nil, fmt.Errorf("service.GetByID: %w", err)
+		return nil, fmt.Errorf("service.SaveAll: %w", err)
 	}
 	return teachers, nil
 }
 
 func (s *TeachersService) Replace(id int, updatedTeacher *models.Teacher) (*models.Teacher, error) {
-	// TODO fields validation
-	dbTeacher, err := s.repo.GetByID(id)
+	// TODO updatedTeacher fields validation
+	dbTeacher, err := s.getByID(id)
 	if err != nil {
-		// TODO all errors handling
 		return nil, fmt.Errorf("service.Replace: %w", err)
 	}
 
 	updatedTeacher.ID = dbTeacher.ID
 	updatedTeacher, err = s.repo.Update(updatedTeacher)
 	if err != nil {
-		// TODO all errors handling
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("service.Replace: %w", apperrors.ErrNotFound)
+		}
 		return nil, fmt.Errorf("service.Replace: %w", err)
 	}
 	return updatedTeacher, nil
 }
 
 func (s *TeachersService) Update(id int, update map[string]any) (*models.Teacher, error) {
-	dbTeacher, err := s.repo.GetByID(id)
+	dbTeacher, err := s.getByID(id)
 	if err != nil {
-		// TODO all errors handling
 		return nil, fmt.Errorf("service.Update: %w", err)
 	}
 
@@ -76,7 +86,9 @@ func (s *TeachersService) Update(id int, update map[string]any) (*models.Teacher
 
 	updatedTeacher, err := s.repo.Update(dbTeacher)
 	if err != nil {
-		// TODO all errors handling
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("service.Update: %w", apperrors.ErrNotFound)
+		}
 		return nil, fmt.Errorf("service.Update: %w", err)
 	}
 	return updatedTeacher, nil
@@ -91,9 +103,8 @@ func (s *TeachersService) UpdateAll(updates []map[string]any) ([]models.Teacher,
 			return nil, fmt.Errorf("service.UpdateAll: %w", err)
 		}
 
-		dbTeacher, err := s.repo.GetByID(id)
+		dbTeacher, err := s.getByID(id)
 		if err != nil {
-			// TODO all errors handling
 			return nil, fmt.Errorf("service.UpdateAll: %w", err)
 		}
 
@@ -106,7 +117,9 @@ func (s *TeachersService) UpdateAll(updates []map[string]any) ([]models.Teacher,
 
 	updatedTeachers, err := s.repo.UpdateAll(updatedTeachers)
 	if err != nil {
-		// TODO all errors handling
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("service.UpdateAll: %w", apperrors.ErrNotFound)
+		}
 		return nil, fmt.Errorf("service.UpdateAll: %w", err)
 	}
 	return updatedTeachers, nil
@@ -152,7 +165,6 @@ func applyUpdates(teacher *models.Teacher, update map[string]any) error {
 					if value.Type().ConvertibleTo(typeField.Type) {
 						valField.Set(value.Convert(typeField.Type))
 					} else {
-						// TODO custom error for field name
 						return apperrors.ErrInvalidField
 					}
 				}
@@ -166,7 +178,6 @@ func applyUpdates(teacher *models.Teacher, update map[string]any) error {
 func (s *TeachersService) Delete(id int) error {
 	err := s.repo.Delete(id)
 	if err != nil {
-		// TODO all errors handling
 		return fmt.Errorf("service.Delete: %w", err)
 	}
 	return nil
@@ -175,7 +186,6 @@ func (s *TeachersService) Delete(id int) error {
 func (s *TeachersService) DeleteAll(ids []int) ([]int, error) {
 	deletedIds, err := s.repo.DeleteAll(ids)
 	if err != nil {
-		// TODO all errors handling
 		return nil, fmt.Errorf("service.DeleteAll: %w", err)
 	}
 	return deletedIds, nil

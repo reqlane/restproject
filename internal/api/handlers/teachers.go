@@ -2,9 +2,12 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"restproject/internal/api/models"
 	"restproject/internal/api/services"
+	"restproject/internal/apperrors"
 	"strconv"
 )
 
@@ -20,14 +23,17 @@ func NewTeachersHandler(service *services.TeachersService) *teachersHandler {
 func (h *teachersHandler) GetSingleTeacherHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
-		http.Error(w, "Invalid ID format", http.StatusBadRequest)
+		http.Error(w, "Invalid teacher ID", http.StatusBadRequest)
 		return
 	}
 
 	teacher, err := h.service.GetByID(id)
 	if err != nil {
-		// TODO all errors handling
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		if errors.Is(err, apperrors.ErrNotFound) {
+			http.Error(w, fmt.Sprintf("Teacher ID %d not found", id), http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -45,8 +51,7 @@ func (h *teachersHandler) GetTeachersHandler(w http.ResponseWriter, r *http.Requ
 
 	teachers, err := h.service.GetAllByCriteria(criteria)
 	if err != nil {
-		// TODO all errors handling
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -92,8 +97,7 @@ func (h *teachersHandler) PostTeachersHandler(w http.ResponseWriter, r *http.Req
 
 	addedTeachers, err := h.service.SaveAll(newTeachers)
 	if err != nil {
-		// TODO all errors handling
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -122,14 +126,17 @@ func (h *teachersHandler) PutSingleTeacherHandler(w http.ResponseWriter, r *http
 	var updatedTeacher models.Teacher
 	err = json.NewDecoder(r.Body).Decode(&updatedTeacher)
 	if err != nil {
-		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
 	result, err := h.service.Replace(id, &updatedTeacher)
 	if err != nil {
-		// TODO all errors handling
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		if errors.Is(err, apperrors.ErrNotFound) {
+			http.Error(w, fmt.Sprintf("Teacher ID %d not found", id), http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -148,14 +155,17 @@ func (h *teachersHandler) PatchSingleTeacherHandler(w http.ResponseWriter, r *ht
 	var update map[string]any
 	err = json.NewDecoder(r.Body).Decode(&update)
 	if err != nil {
-		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
 	updatedTeacher, err := h.service.Update(id, update)
 	if err != nil {
-		// TODO all errors handling
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		if errors.Is(err, apperrors.ErrNotFound) {
+			http.Error(w, fmt.Sprintf("Teacher ID %d not found", id), http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -168,14 +178,20 @@ func (h *teachersHandler) PatchTeachersHandler(w http.ResponseWriter, r *http.Re
 	var updates []map[string]any
 	err := json.NewDecoder(r.Body).Decode(&updates)
 	if err != nil {
-		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
 	updatedTeachers, err := h.service.UpdateAll(updates)
 	if err != nil {
-		// TODO all errors handling
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		switch {
+		case errors.Is(err, apperrors.ErrNotFound):
+			http.Error(w, "Teacher ID not found", http.StatusNotFound)
+		case errors.Is(err, apperrors.ErrInvalidField):
+			http.Error(w, "Invalid field type", http.StatusBadRequest)
+		default:
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+		}
 		return
 	}
 
@@ -193,8 +209,11 @@ func (h *teachersHandler) DeleteSingleTeacherHandler(w http.ResponseWriter, r *h
 
 	err = h.service.Delete(id)
 	if err != nil {
-		// TODO all errors handling
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		if errors.Is(err, apperrors.ErrNotFound) {
+			http.Error(w, fmt.Sprintf("Teacher ID %d not found", id), http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -214,13 +233,16 @@ func (h *teachersHandler) DeleteTeachersHandler(w http.ResponseWriter, r *http.R
 	var ids []int
 	err := json.NewDecoder(r.Body).Decode(&ids)
 	if err != nil {
-		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
 	deletedIds, err := h.service.DeleteAll(ids)
 	if err != nil {
-		// TODO all errors handling
+		if errors.Is(err, apperrors.ErrNotFound) {
+			http.Error(w, "Teacher ID not found", http.StatusNotFound)
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
