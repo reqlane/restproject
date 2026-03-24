@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"restproject/internal/api/models"
-	"restproject/internal/apperrors"
 	"strings"
 )
 
@@ -132,20 +131,9 @@ func (r *TeacherRepository) SaveAll(teachers []models.Teacher) ([]models.Teacher
 
 func (r *TeacherRepository) Update(teacher *models.Teacher) (*models.Teacher, error) {
 	query := `UPDATE teachers SET first_name=?, last_name=?, email=?, class=?, subject=? WHERE id=?`
-	result, err := r.db.Exec(query, teacher.FirstName, teacher.LastName, teacher.Email, teacher.Class, teacher.Subject, teacher.ID)
+	_, err := r.db.Exec(query, teacher.FirstName, teacher.LastName, teacher.Email, teacher.Class, teacher.Subject, teacher.ID)
 	if err != nil {
 		return nil, fmt.Errorf("repo.Update: %w", err)
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return nil, fmt.Errorf("repo.Update: %w", err)
-	}
-	if rowsAffected < 1 {
-		_, err := r.GetByID(teacher.ID)
-		if err != nil {
-			return nil, fmt.Errorf("repo.Update: %w", err)
-		}
 	}
 	return teacher, nil
 }
@@ -164,20 +152,9 @@ func (r *TeacherRepository) UpdateAll(teachers []models.Teacher) ([]models.Teach
 	defer updateStmt.Close()
 
 	for _, teacher := range teachers {
-		result, err := updateStmt.Exec(teacher.FirstName, teacher.LastName, teacher.Email, teacher.Class, teacher.Subject, teacher.ID)
+		_, err := updateStmt.Exec(teacher.FirstName, teacher.LastName, teacher.Email, teacher.Class, teacher.Subject, teacher.ID)
 		if err != nil {
 			return nil, fmt.Errorf("repo.UpdateAll: %w", err)
-		}
-
-		rowsAffected, err := result.RowsAffected()
-		if err != nil {
-			return nil, fmt.Errorf("repo.UpdateAll: %w", err)
-		}
-		if rowsAffected < 1 {
-			_, err := r.GetByID(teacher.ID)
-			if err != nil {
-				return nil, fmt.Errorf("repo.UpdateAll: %w", err)
-			}
 		}
 	}
 
@@ -190,16 +167,9 @@ func (r *TeacherRepository) UpdateAll(teachers []models.Teacher) ([]models.Teach
 
 func (r *TeacherRepository) Delete(id int) error {
 	query := `DELETE FROM teachers WHERE id=?`
-	result, err := r.db.Exec(query, id)
+	_, err := r.db.Exec(query, id)
 	if err != nil {
 		return fmt.Errorf("repo.Delete: %w", err)
-	}
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("repo.Delete: %w", err)
-	}
-	if rowsAffected < 1 {
-		return fmt.Errorf("repo.Delete: %w", apperrors.ErrNotFound)
 	}
 	return nil
 }
@@ -225,16 +195,13 @@ func (r *TeacherRepository) DeleteAll(ids []int) ([]int, error) {
 		if err != nil {
 			return nil, fmt.Errorf("repo.DeleteAll: %w", err)
 		}
-
 		rowsAffected, err := result.RowsAffected()
 		if err != nil {
 			return nil, fmt.Errorf("repo.DeleteAll: %w", err)
 		}
-
-		if rowsAffected < 1 {
-			return nil, fmt.Errorf("repo.DeleteAll: %w", apperrors.ErrNotFound)
+		if rowsAffected > 0 {
+			deletedIds = append(deletedIds, id)
 		}
-		deletedIds = append(deletedIds, id)
 	}
 
 	err = tx.Commit()

@@ -23,7 +23,7 @@ func NewTeachersService(repo *repositories.TeacherRepository) *TeachersService {
 func (s *TeachersService) GetByID(id int) (*models.Teacher, error) {
 	teacher, err := s.getByID(id)
 	if err != nil {
-		return nil, fmt.Errorf("service.getByID: %w", err)
+		return nil, fmt.Errorf("service.GetByID: %w", err)
 	}
 	return teacher, nil
 }
@@ -32,7 +32,7 @@ func (s *TeachersService) getByID(id int) (*models.Teacher, error) {
 	teacher, err := s.repo.GetByID(id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, apperrors.ErrNotFound
+			return nil, apperrors.NewError(apperrors.ErrNotFound, fmt.Errorf("teacher id%d not found", id))
 		}
 		return nil, err
 	}
@@ -66,9 +66,6 @@ func (s *TeachersService) Replace(id int, updatedTeacher *models.Teacher) (*mode
 	updatedTeacher.ID = dbTeacher.ID
 	updatedTeacher, err = s.repo.Update(updatedTeacher)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("service.Replace: %w", apperrors.ErrNotFound)
-		}
 		return nil, fmt.Errorf("service.Replace: %w", err)
 	}
 	return updatedTeacher, nil
@@ -86,9 +83,6 @@ func (s *TeachersService) Update(id int, update map[string]any) (*models.Teacher
 
 	updatedTeacher, err := s.repo.Update(dbTeacher)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("service.Update: %w", apperrors.ErrNotFound)
-		}
 		return nil, fmt.Errorf("service.Update: %w", err)
 	}
 	return updatedTeacher, nil
@@ -117,9 +111,6 @@ func (s *TeachersService) UpdateAll(updates []map[string]any) ([]models.Teacher,
 
 	updatedTeachers, err := s.repo.UpdateAll(updatedTeachers)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("service.UpdateAll: %w", apperrors.ErrNotFound)
-		}
 		return nil, fmt.Errorf("service.UpdateAll: %w", err)
 	}
 	return updatedTeachers, nil
@@ -128,7 +119,7 @@ func (s *TeachersService) UpdateAll(updates []map[string]any) ([]models.Teacher,
 func extractID(update map[string]any) (int, error) {
 	idRaw, exists := update["id"]
 	if !exists {
-		return 0, apperrors.ErrMissingID
+		return 0, apperrors.NewError(apperrors.ErrMissingID, errors.New("missing teacher id in request body"))
 	}
 
 	switch v := idRaw.(type) {
@@ -139,11 +130,11 @@ func extractID(update map[string]any) (int, error) {
 	case string:
 		id, err := strconv.Atoi(v)
 		if err != nil {
-			return 0, apperrors.ErrInvalidID
+			return 0, apperrors.NewError(apperrors.ErrInvalidID, fmt.Errorf("invalid id format: '%s' is not a number", v))
 		}
 		return id, nil
 	default:
-		return 0, apperrors.ErrInvalidID
+		return 0, apperrors.NewError(apperrors.ErrInvalidID, errors.New("invalid id format: must be a number"))
 	}
 }
 
@@ -165,7 +156,7 @@ func applyUpdates(teacher *models.Teacher, update map[string]any) error {
 					if value.Type().ConvertibleTo(typeField.Type) {
 						valField.Set(value.Convert(typeField.Type))
 					} else {
-						return apperrors.ErrInvalidField
+						return apperrors.NewError(apperrors.ErrInvalidField, fmt.Errorf("invalid type for field '%s' on teacher id%d", k, teacher.ID))
 					}
 				}
 				break
@@ -176,7 +167,12 @@ func applyUpdates(teacher *models.Teacher, update map[string]any) error {
 }
 
 func (s *TeachersService) Delete(id int) error {
-	err := s.repo.Delete(id)
+	_, err := s.getByID(id)
+	if err != nil {
+		return fmt.Errorf("service.Delete: %w", err)
+	}
+
+	err = s.repo.Delete(id)
 	if err != nil {
 		return fmt.Errorf("service.Delete: %w", err)
 	}
