@@ -2,11 +2,9 @@ package handlers
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"restproject/internal/api/models"
 	"restproject/internal/api/services"
-	"restproject/internal/apperrors"
 	"strconv"
 )
 
@@ -16,14 +14,6 @@ type teachersHandler struct {
 
 func NewTeachersHandler(service *services.TeachersService) *teachersHandler {
 	return &teachersHandler{service: service}
-}
-
-func handleServiceError(w http.ResponseWriter, err error) {
-	httpErr := apperrors.FromError(err)
-	if httpErr.Status == http.StatusInternalServerError {
-		log.Println(err)
-	}
-	http.Error(w, httpErr.Message, httpErr.Status)
 }
 
 // GET /teachers/{id}
@@ -72,27 +62,12 @@ func (h *teachersHandler) GetTeachersHandler(w http.ResponseWriter, r *http.Requ
 	json.NewEncoder(w).Encode(response)
 }
 
-func addFiltersCriteria(r *http.Request, criteria *models.TeacherCriteria) {
-	fieldNames := map[string]string{
-		"first_name": "first_name",
-		"last_name":  "last_name",
-		"email":      "email",
-		"class":      "class",
-		"subject":    "subject",
-	}
-
-	for param, dbField := range fieldNames {
-		value := r.URL.Query().Get(param)
-		if value != "" {
-			criteria.Filters[dbField] = value
-		}
-	}
-}
-
 // POST /teachers/
 func (h *teachersHandler) PostTeachersHandler(w http.ResponseWriter, r *http.Request) {
 	var newTeachers []models.Teacher
-	err := json.NewDecoder(r.Body).Decode(&newTeachers)
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	err := decoder.Decode(&newTeachers)
 	if err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
@@ -127,7 +102,9 @@ func (h *teachersHandler) PutSingleTeacherHandler(w http.ResponseWriter, r *http
 	}
 
 	var updatedTeacher models.Teacher
-	err = json.NewDecoder(r.Body).Decode(&updatedTeacher)
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	err = decoder.Decode(&updatedTeacher)
 	if err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return

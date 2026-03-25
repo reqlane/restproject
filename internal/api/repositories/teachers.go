@@ -3,7 +3,6 @@ package repositories
 import (
 	"database/sql"
 	"fmt"
-	"reflect"
 	"restproject/internal/api/models"
 	"strings"
 )
@@ -61,43 +60,6 @@ func (r *TeacherRepository) GetAllByCriteria(criteria models.TeacherCriteria) ([
 	return teachers, nil
 }
 
-func addSorting(query *strings.Builder, sortings []string) {
-	addedSort := false
-	for _, param := range sortings {
-		parts := strings.Split(param, ":")
-		if len(parts) != 2 {
-			continue
-		}
-		dbField, order := parts[0], parts[1]
-		if !isValidSortField(dbField) || !isValidSortOrder(order) {
-			continue
-		}
-		if !addedSort {
-			query.WriteString(" ORDER BY")
-			addedSort = true
-		} else {
-			query.WriteString(",")
-		}
-		query.WriteString(" " + dbField + " " + order)
-	}
-}
-
-func isValidSortOrder(order string) bool {
-	orderLowerCase := strings.ToLower(order)
-	return orderLowerCase == "asc" || orderLowerCase == "desc"
-}
-
-func isValidSortField(field string) bool {
-	validFields := map[string]bool{
-		"first_name": true,
-		"last_name":  true,
-		"email":      true,
-		"class":      true,
-		"subject":    true,
-	}
-	return validFields[field]
-}
-
 func (r *TeacherRepository) SaveAll(teachers []models.Teacher) ([]models.Teacher, error) {
 	tx, err := r.db.Begin()
 	if err != nil {
@@ -105,7 +67,6 @@ func (r *TeacherRepository) SaveAll(teachers []models.Teacher) ([]models.Teacher
 	}
 	defer tx.Rollback()
 
-	// stmt, err := tx.Prepare(`INSERT INTO teachers (first_name, last_name, email, class, subject) VALUES (?,?,?,?,?)`)
 	stmt, err := tx.Prepare(generateInsertQuery(models.Teacher{}))
 	if err != nil {
 		return nil, fmt.Errorf("repo.SaveAll: %w", err)
@@ -113,7 +74,6 @@ func (r *TeacherRepository) SaveAll(teachers []models.Teacher) ([]models.Teacher
 	defer stmt.Close()
 
 	for i, newTeacher := range teachers {
-		// result, err := stmt.Exec(newTeacher.FirstName, newTeacher.LastName, newTeacher.Email, newTeacher.Class, newTeacher.Subject)
 		values := getStructValues(newTeacher)
 		result, err := stmt.Exec(values...)
 		if err != nil {
@@ -131,38 +91,6 @@ func (r *TeacherRepository) SaveAll(teachers []models.Teacher) ([]models.Teacher
 		return nil, fmt.Errorf("repo.SaveAll: %w", err)
 	}
 	return teachers, nil
-}
-
-func generateInsertQuery(model any) string {
-	modelType := reflect.TypeOf(model)
-	var columns, placeholders string
-	for field := range modelType.Fields() {
-		dbTag := field.Tag.Get("db")
-		dbTag = strings.Split(dbTag, ",")[0]
-		if dbTag != "" && dbTag != "id" {
-			if columns != "" {
-				columns += ", "
-				placeholders += ", "
-			}
-			columns += dbTag
-			placeholders += "?"
-		}
-	}
-	return fmt.Sprintf("INSERT INTO teachers (%s) VALUES (%s)", columns, placeholders)
-}
-
-func getStructValues(model any) []any {
-	modelValue := reflect.ValueOf(model)
-	modelType := modelValue.Type()
-	values := []any{}
-	for i := 0; i < modelType.NumField(); i++ {
-		dbTag := modelType.Field(i).Tag.Get("db")
-		dbTag = strings.Split(dbTag, ",")[0]
-		if dbTag != "" && dbTag != "id" {
-			values = append(values, modelValue.Field(i).Interface())
-		}
-	}
-	return values
 }
 
 func (r *TeacherRepository) Update(teacher *models.Teacher) (*models.Teacher, error) {

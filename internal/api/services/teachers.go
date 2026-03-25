@@ -4,12 +4,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"reflect"
 	"restproject/internal/api/models"
 	"restproject/internal/api/repositories"
 	"restproject/internal/apperrors"
-	"strconv"
-	"strings"
 )
 
 type TeachersService struct {
@@ -32,7 +29,7 @@ func (s *TeachersService) getByID(id int) (*models.Teacher, error) {
 	teacher, err := s.repo.GetByID(id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, apperrors.NewError(apperrors.ErrNotFound, fmt.Errorf("teacher id%d not found", id))
+			return nil, apperrors.NewError(apperrors.ErrNotFound, fmt.Errorf("teacher id %d not found", id))
 		}
 		return nil, err
 	}
@@ -48,7 +45,12 @@ func (s *TeachersService) GetAllByCriteria(criteria models.TeacherCriteria) ([]m
 }
 
 func (s *TeachersService) SaveAll(teachers []models.Teacher) ([]models.Teacher, error) {
-	// TODO teachers fields validation
+	for _, teacher := range teachers {
+		if err := checkBlankFields(teacher); err != nil {
+			return nil, fmt.Errorf("service.SaveAll: %w", err)
+		}
+	}
+
 	teachers, err := s.repo.SaveAll(teachers)
 	if err != nil {
 		return nil, fmt.Errorf("service.SaveAll: %w", err)
@@ -57,7 +59,10 @@ func (s *TeachersService) SaveAll(teachers []models.Teacher) ([]models.Teacher, 
 }
 
 func (s *TeachersService) Replace(id int, updatedTeacher *models.Teacher) (*models.Teacher, error) {
-	// TODO updatedTeacher fields validation
+	if err := checkBlankFields(*updatedTeacher); err != nil {
+		return nil, fmt.Errorf("service.Replace: %w", err)
+	}
+
 	dbTeacher, err := s.getByID(id)
 	if err != nil {
 		return nil, fmt.Errorf("service.Replace: %w", err)
@@ -114,56 +119,6 @@ func (s *TeachersService) UpdateAll(updates []map[string]any) ([]models.Teacher,
 		return nil, fmt.Errorf("service.UpdateAll: %w", err)
 	}
 	return updatedTeachers, nil
-}
-
-func extractID(update map[string]any) (int, error) {
-	idRaw, exists := update["id"]
-	if !exists {
-		return 0, apperrors.NewError(apperrors.ErrMissingID, errors.New("missing teacher id in request body"))
-	}
-
-	switch v := idRaw.(type) {
-	case float64:
-		return int(v), nil
-	case int:
-		return v, nil
-	case string:
-		id, err := strconv.Atoi(v)
-		if err != nil {
-			return 0, apperrors.NewError(apperrors.ErrInvalidID, fmt.Errorf("invalid id format: '%s' is not a number", v))
-		}
-		return id, nil
-	default:
-		return 0, apperrors.NewError(apperrors.ErrInvalidID, errors.New("invalid id format: must be a number"))
-	}
-}
-
-func applyUpdates(teacher *models.Teacher, update map[string]any) error {
-	teacherVal := reflect.ValueOf(teacher).Elem()
-	teacherType := teacherVal.Type()
-
-	for k, v := range update {
-		if k == "id" {
-			continue
-		}
-		for i := 0; i < teacherVal.NumField(); i++ {
-			typeField := teacherType.Field(i)
-			valField := teacherVal.Field(i)
-			jsonName := strings.Split(typeField.Tag.Get("json"), ",")[0]
-			if jsonName == k {
-				if valField.CanSet() {
-					value := reflect.ValueOf(v)
-					if value.Type().ConvertibleTo(typeField.Type) {
-						valField.Set(value.Convert(typeField.Type))
-					} else {
-						return apperrors.NewError(apperrors.ErrInvalidField, fmt.Errorf("invalid type for field '%s' on teacher id%d", k, teacher.ID))
-					}
-				}
-				break
-			}
-		}
-	}
-	return nil
 }
 
 func (s *TeachersService) Delete(id int) error {

@@ -28,10 +28,10 @@ func (a *app) Router() *http.ServeMux {
 	teachersService := services.NewTeachersService(teachersRepo)
 	teachersHandler := handlers.NewTeachersHandler(teachersService)
 
-	mux.HandleFunc("GET /teachers/", teachersHandler.GetTeachersHandler)
-	mux.HandleFunc("POST /teachers/", teachersHandler.PostTeachersHandler)
-	mux.HandleFunc("PATCH /teachers/", teachersHandler.PatchTeachersHandler)
-	mux.HandleFunc("DELETE /teachers/", teachersHandler.DeleteTeachersHandler)
+	mux.HandleFunc("GET /teachers", teachersHandler.GetTeachersHandler)
+	mux.HandleFunc("POST /teachers", teachersHandler.PostTeachersHandler)
+	mux.HandleFunc("PATCH /teachers", teachersHandler.PatchTeachersHandler)
+	mux.HandleFunc("DELETE /teachers", teachersHandler.DeleteTeachersHandler)
 
 	mux.HandleFunc("GET /teachers/{id}", teachersHandler.GetSingleTeacherHandler)
 	mux.HandleFunc("PUT /teachers/{id}", teachersHandler.PutSingleTeacherHandler)
