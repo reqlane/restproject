@@ -3,6 +3,7 @@ package repositories
 import (
 	"database/sql"
 	"fmt"
+	"reflect"
 	"restproject/internal/api/models"
 	"strings"
 )
@@ -104,14 +105,17 @@ func (r *TeacherRepository) SaveAll(teachers []models.Teacher) ([]models.Teacher
 	}
 	defer tx.Rollback()
 
-	stmt, err := tx.Prepare(`INSERT INTO teachers (first_name, last_name, email, class, subject) VALUES (?,?,?,?,?)`)
+	// stmt, err := tx.Prepare(`INSERT INTO teachers (first_name, last_name, email, class, subject) VALUES (?,?,?,?,?)`)
+	stmt, err := tx.Prepare(generateInsertQuery(models.Teacher{}))
 	if err != nil {
 		return nil, fmt.Errorf("repo.SaveAll: %w", err)
 	}
 	defer stmt.Close()
 
 	for i, newTeacher := range teachers {
-		result, err := stmt.Exec(newTeacher.FirstName, newTeacher.LastName, newTeacher.Email, newTeacher.Class, newTeacher.Subject)
+		// result, err := stmt.Exec(newTeacher.FirstName, newTeacher.LastName, newTeacher.Email, newTeacher.Class, newTeacher.Subject)
+		values := getStructValues(newTeacher)
+		result, err := stmt.Exec(values...)
 		if err != nil {
 			return nil, fmt.Errorf("repo.SaveAll: %w", err)
 		}
@@ -127,6 +131,38 @@ func (r *TeacherRepository) SaveAll(teachers []models.Teacher) ([]models.Teacher
 		return nil, fmt.Errorf("repo.SaveAll: %w", err)
 	}
 	return teachers, nil
+}
+
+func generateInsertQuery(model any) string {
+	modelType := reflect.TypeOf(model)
+	var columns, placeholders string
+	for field := range modelType.Fields() {
+		dbTag := field.Tag.Get("db")
+		dbTag = strings.Split(dbTag, ",")[0]
+		if dbTag != "" && dbTag != "id" {
+			if columns != "" {
+				columns += ", "
+				placeholders += ", "
+			}
+			columns += dbTag
+			placeholders += "?"
+		}
+	}
+	return fmt.Sprintf("INSERT INTO teachers (%s) VALUES (%s)", columns, placeholders)
+}
+
+func getStructValues(model any) []any {
+	modelValue := reflect.ValueOf(model)
+	modelType := modelValue.Type()
+	values := []any{}
+	for i := 0; i < modelType.NumField(); i++ {
+		dbTag := modelType.Field(i).Tag.Get("db")
+		dbTag = strings.Split(dbTag, ",")[0]
+		if dbTag != "" && dbTag != "id" {
+			values = append(values, modelValue.Field(i).Interface())
+		}
+	}
+	return values
 }
 
 func (r *TeacherRepository) Update(teacher *models.Teacher) (*models.Teacher, error) {
