@@ -18,6 +18,7 @@ func (a *app) Router() *http.ServeMux {
 
 	a.teachersRouter(mux)
 	a.studentsRouter(mux)
+	a.execsRouter(mux)
 
 	return mux
 }

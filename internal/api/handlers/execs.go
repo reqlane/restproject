@@ -1,16 +1,16 @@
 package handlers
 
 import (
-	"database/sql"
 	"net/http"
+	"restproject/internal/api/services"
 )
 
 type execsHandler struct {
-	db *sql.DB
+	service *services.ExecsService
 }
 
-func NewExecsHandler(db *sql.DB) *execsHandler {
-	return &execsHandler{db: db}
+func NewExecsHandler(service *services.ExecsService) *execsHandler {
+	return &execsHandler{service: service}
 }
 
 func (h *execsHandler) ExecsHandler(w http.ResponseWriter, r *http.Request) {
