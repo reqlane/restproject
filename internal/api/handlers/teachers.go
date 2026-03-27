@@ -243,7 +243,7 @@ func (h *teachersHandler) GetStudentsByTeacherID(w http.ResponseWriter, r *http.
 	json.NewEncoder(w).Encode(response)
 }
 
-// GET /teachers/{id}/studentscount
+// GET /teachers/{id}/students/count
 func (h *teachersHandler) GetStudentsCountByTeacherID(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
