@@ -214,3 +214,57 @@ func (h *teachersHandler) DeleteTeachersHandler(w http.ResponseWriter, r *http.R
 	}
 	json.NewEncoder(w).Encode(response)
 }
+
+// GET /teachers/{id}/students
+func (h *teachersHandler) GetStudentsByTeacherID(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "invalid teacher id", http.StatusBadRequest)
+		return
+	}
+
+	students, err := h.service.GetStudentsByTeacherID(id)
+	if err != nil {
+		handleServiceError(w, err)
+		return
+	}
+
+	response := struct {
+		Status string           `json:"status"`
+		Count  int              `json:"count"`
+		Data   []models.Student `json:"data"`
+	}{
+		Status: "success",
+		Count:  len(students),
+		Data:   students,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// GET /teachers/{id}/studentscount
+func (h *teachersHandler) GetStudentsCountByTeacherID(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "invalid teacher id", http.StatusBadRequest)
+		return
+	}
+
+	studentsCount, err := h.service.GetStudentsCountByTeacherID(id)
+	if err != nil {
+		handleServiceError(w, err)
+		return
+	}
+
+	response := struct {
+		Status string `json:"status"`
+		Count  int    `json:"count"`
+	}{
+		Status: "success",
+		Count:  studentsCount,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}

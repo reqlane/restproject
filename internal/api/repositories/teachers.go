@@ -174,3 +174,38 @@ func (r *TeachersRepository) DeleteAll(ids []int) ([]int, error) {
 	}
 	return deletedIds, nil
 }
+
+func (r *TeachersRepository) GetStudentsByTeacherID(id int) ([]models.Student, error) {
+	query := `SELECT s.id, s.first_name, s.last_name, s.email, s.class FROM students s JOIN teachers t ON s.class = t.class WHERE t.id=?`
+	rows, err := r.db.Query(query, id)
+	if err != nil {
+		return nil, fmt.Errorf("repo.GetStudentsByTeacherID: %w", err)
+	}
+	defer rows.Close()
+
+	students := []models.Student{}
+	for rows.Next() {
+		var student models.Student
+		err := rows.Scan(&student.ID, &student.FirstName, &student.LastName, &student.Email, &student.Class)
+		if err != nil {
+			return nil, fmt.Errorf("repo.GetStudentsByTeacherID: %w", err)
+		}
+		students = append(students, student)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return nil, fmt.Errorf("repo.GetStudentsByTeacherID: %w", err)
+	}
+	return students, nil
+}
+
+func (r *TeachersRepository) GetStudentsCountByTeacherID(id int) (int, error) {
+	var studentsCount int
+	query := `SELECT COUNT(*) FROM students s JOIN teachers t ON s.class = t.class WHERE t.id=?`
+	err := r.db.QueryRow(query, id).Scan(&studentsCount)
+	if err != nil {
+		return 0, fmt.Errorf("repo.GetStudentsCountByTeacherID: %w", err)
+	}
+	return studentsCount, nil
+}

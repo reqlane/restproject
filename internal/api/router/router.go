@@ -38,6 +38,9 @@ func (a *app) Router() *http.ServeMux {
 	mux.HandleFunc("PATCH /teachers/{id}", teachersHandler.PatchSingleTeacherHandler)
 	mux.HandleFunc("DELETE /teachers/{id}", teachersHandler.DeleteSingleTeacherHandler)
 
+	mux.HandleFunc("GET /teachers/{id}/students", teachersHandler.GetStudentsByTeacherID)
+	mux.HandleFunc("GET /teachers/{id}/studentscount", teachersHandler.GetStudentsCountByTeacherID)
+
 	// Students
 	studentsRepo := repositories.NewStudentsRepository(a.db)
 	studentsService := services.NewStudentsService(studentsRepo)

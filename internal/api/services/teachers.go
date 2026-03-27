@@ -141,3 +141,19 @@ func (s *TeachersService) DeleteAll(ids []int) ([]int, error) {
 	}
 	return deletedIds, nil
 }
+
+func (s *TeachersService) GetStudentsByTeacherID(id int) ([]models.Student, error) {
+	students, err := s.repo.GetStudentsByTeacherID(id)
+	if err != nil {
+		return nil, fmt.Errorf("service.GetAllByCriteria: %w", err)
+	}
+	return students, nil
+}
+
+func (s *TeachersService) GetStudentsCountByTeacherID(id int) (int, error) {
+	studentsCount, err := s.repo.GetStudentsCountByTeacherID(id)
+	if err != nil {
+		return 0, fmt.Errorf("service.GetAllByCriteria: %w", err)
+	}
+	return studentsCount, nil
+}
