@@ -1,5 +1,7 @@
 package models
 
+// TODO validator package
+// TODO db tags using package
 type Teacher struct {
 	ID        int    `json:"id,omitempty" db:"id,omitempty"`
 	FirstName string `json:"first_name,omitempty" db:"first_name,omitempty"`
@@ -9,7 +11,6 @@ type Teacher struct {
 	Subject   string `json:"subject,omitempty" db:"subject,omitempty"`
 }
 
-type TeacherCriteria struct {
-	Filters  map[string]string
-	Sortings []string
+func (t *Teacher) GetID() int {
+	return t.ID
 }

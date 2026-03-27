@@ -21,7 +21,7 @@ func (a *app) Router() *http.ServeMux {
 
 	// Root
 	rootHandler := handlers.NewRootHandler(a.db)
-	mux.HandleFunc("/", rootHandler.RootHandler)
+	mux.HandleFunc("GET /", rootHandler.RootHandler)
 
 	// Teachers
 	teachersRepo := repositories.NewTeacherRepository(a.db)
@@ -39,12 +39,23 @@ func (a *app) Router() *http.ServeMux {
 	mux.HandleFunc("DELETE /teachers/{id}", teachersHandler.DeleteSingleTeacherHandler)
 
 	// Students
-	studentsHandler := handlers.NewStudentsHandler(a.db)
-	mux.HandleFunc("/students/", studentsHandler.StudentsHandler)
+	studentsRepo := repositories.NewStudentsRepository(a.db)
+	studentsService := services.NewStudentsService(studentsRepo)
+	studentsHandler := handlers.NewStudentsHandler(studentsService)
+
+	mux.HandleFunc("GET /students", studentsHandler.GetStudentsHandler)
+	mux.HandleFunc("POST /students", studentsHandler.PostStudentsHandler)
+	mux.HandleFunc("PATCH /students", studentsHandler.PatchStudentsHandler)
+	mux.HandleFunc("DELETE /students", studentsHandler.DeleteStudentsHandler)
+
+	mux.HandleFunc("GET /students/{id}", studentsHandler.GetSingleStudentHandler)
+	mux.HandleFunc("PUT /students/{id}", studentsHandler.PutSingleStudentHandler)
+	mux.HandleFunc("PATCH /students/{id}", studentsHandler.PatchSingleStudentHandler)
+	mux.HandleFunc("DELETE /students/{id}", studentsHandler.DeleteSingleStudentHandler)
 
 	//Execs
 	execsHandler := handlers.NewExecsHandler(a.db)
-	mux.HandleFunc("/execs/", execsHandler.ExecsHandler)
+	mux.HandleFunc("GET /execs/", execsHandler.ExecsHandler)
 
 	return mux
 }

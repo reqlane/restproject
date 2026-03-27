@@ -3,10 +3,11 @@ package repositories
 import (
 	"fmt"
 	"reflect"
+	"slices"
 	"strings"
 )
 
-func addSorting(query *strings.Builder, sortings []string) {
+func addSorting(query *strings.Builder, sortings []string, fieldNames []string) {
 	addedSort := false
 	for _, param := range sortings {
 		parts := strings.Split(param, ":")
@@ -14,7 +15,7 @@ func addSorting(query *strings.Builder, sortings []string) {
 			continue
 		}
 		dbField, order := parts[0], parts[1]
-		if !isValidSortField(dbField) || !isValidSortOrder(order) {
+		if !slices.Contains(fieldNames, dbField) || !isValidSortOrder(order) {
 			continue
 		}
 		if !addedSort {
@@ -32,18 +33,7 @@ func isValidSortOrder(order string) bool {
 	return orderLowerCase == "asc" || orderLowerCase == "desc"
 }
 
-func isValidSortField(field string) bool {
-	validFields := map[string]bool{
-		"first_name": true,
-		"last_name":  true,
-		"email":      true,
-		"class":      true,
-		"subject":    true,
-	}
-	return validFields[field]
-}
-
-func generateInsertQuery(model any) string {
+func generateInsertQuery(table string, model any) string {
 	modelType := reflect.TypeOf(model)
 	var columns, placeholders []string
 	for field := range modelType.Fields() {
@@ -54,7 +44,7 @@ func generateInsertQuery(model any) string {
 			placeholders = append(placeholders, "?")
 		}
 	}
-	return fmt.Sprintf("INSERT INTO teachers (%s) VALUES (%s)", strings.Join(columns, ", "), strings.Join(placeholders, ", "))
+	return fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", table, strings.Join(columns, ", "), strings.Join(placeholders, ", "))
 }
 
 func getStructValues(model any) []any {

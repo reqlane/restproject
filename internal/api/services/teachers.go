@@ -10,10 +10,10 @@ import (
 )
 
 type TeachersService struct {
-	repo *repositories.TeacherRepository
+	repo *repositories.TeachersRepository
 }
 
-func NewTeachersService(repo *repositories.TeacherRepository) *TeachersService {
+func NewTeachersService(repo *repositories.TeachersRepository) *TeachersService {
 	return &TeachersService{repo: repo}
 }
 
@@ -36,7 +36,7 @@ func (s *TeachersService) getByID(id int) (*models.Teacher, error) {
 	return teacher, nil
 }
 
-func (s *TeachersService) GetAllByCriteria(criteria models.TeacherCriteria) ([]models.Teacher, error) {
+func (s *TeachersService) GetAllByCriteria(criteria models.Criteria) ([]models.Teacher, error) {
 	teachers, err := s.repo.GetAllByCriteria(criteria)
 	if err != nil {
 		return nil, fmt.Errorf("service.GetAllByCriteria: %w", err)

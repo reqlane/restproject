@@ -1,29 +1,216 @@
 package handlers
 
 import (
-	"database/sql"
+	"encoding/json"
 	"net/http"
+	"restproject/internal/api/models"
+	"restproject/internal/api/services"
+	"strconv"
 )
 
 type studentsHandler struct {
-	db *sql.DB
+	service *services.StudentsService
 }
 
-func NewStudentsHandler(db *sql.DB) *studentsHandler {
-	return &studentsHandler{db: db}
+func NewStudentsHandler(service *services.StudentsService) *studentsHandler {
+	return &studentsHandler{service: service}
 }
 
-func (h *studentsHandler) StudentsHandler(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		w.Write([]byte("Hello GET Method on Students Route"))
-	case http.MethodPost:
-		w.Write([]byte("Hello POST Method on Students Route"))
-	case http.MethodPut:
-		w.Write([]byte("Hello PUT Method on Students Route"))
-	case http.MethodPatch:
-		w.Write([]byte("Hello PATCH Method on Students Route"))
-	case http.MethodDelete:
-		w.Write([]byte("Hello DELETE Method on Students Route"))
+// GET /students/{id}
+func (h *studentsHandler) GetSingleStudentHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "invalid student id", http.StatusBadRequest)
+		return
 	}
+
+	student, err := h.service.GetByID(id)
+	if err != nil {
+		handleServiceError(w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(student)
+}
+
+// GET /students/
+func (h *studentsHandler) GetStudentsHandler(w http.ResponseWriter, r *http.Request) {
+	criteria := models.Criteria{
+		Filters:  map[string]string{},
+		Sortings: r.URL.Query()["sortby"],
+	}
+	criteria.AddFilters(r.URL.Query(), models.StudentFieldNames)
+
+	students, err := h.service.GetAllByCriteria(criteria)
+	if err != nil {
+		handleServiceError(w, err)
+		return
+	}
+
+	response := struct {
+		Status string           `json:"status"`
+		Count  int              `json:"count"`
+		Data   []models.Student `json:"data"`
+	}{
+		Status: "success",
+		Count:  len(students),
+		Data:   students,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// POST /students/
+func (h *studentsHandler) PostStudentsHandler(w http.ResponseWriter, r *http.Request) {
+	var newStudents []models.Student
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	err := decoder.Decode(&newStudents)
+	if err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	addedStudents, err := h.service.SaveAll(newStudents)
+	if err != nil {
+		handleServiceError(w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	response := struct {
+		Status string           `json:"status"`
+		Count  int              `json:"count"`
+		Data   []models.Student `json:"data"`
+	}{
+		Status: "success",
+		Count:  len(addedStudents),
+		Data:   addedStudents,
+	}
+	json.NewEncoder(w).Encode(response)
+}
+
+// PUT /students/{id}
+func (h *studentsHandler) PutSingleStudentHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "invalid student id", http.StatusBadRequest)
+		return
+	}
+
+	var updatedStudent models.Student
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	err = decoder.Decode(&updatedStudent)
+	if err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	result, err := h.service.Replace(id, &updatedStudent)
+	if err != nil {
+		handleServiceError(w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
+}
+
+// PATCH /students/{id}
+func (h *studentsHandler) PatchSingleStudentHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "invalid student id", http.StatusBadRequest)
+		return
+	}
+
+	var update map[string]any
+	err = json.NewDecoder(r.Body).Decode(&update)
+	if err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	updatedStudent, err := h.service.Update(id, update)
+	if err != nil {
+		handleServiceError(w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(updatedStudent)
+}
+
+// PATCH /students/
+func (h *studentsHandler) PatchStudentsHandler(w http.ResponseWriter, r *http.Request) {
+	var updates []map[string]any
+	err := json.NewDecoder(r.Body).Decode(&updates)
+	if err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	updatedStudents, err := h.service.UpdateAll(updates)
+	if err != nil {
+		handleServiceError(w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(updatedStudents)
+}
+
+// DELETE /students/{id}
+func (h *studentsHandler) DeleteSingleStudentHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "invalid student id", http.StatusBadRequest)
+		return
+	}
+
+	err = h.service.Delete(id)
+	if err != nil {
+		handleServiceError(w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	response := struct {
+		Status string `json:"status"`
+		ID     int    `json:"id"`
+	}{
+		Status: "success",
+		ID:     id,
+	}
+	json.NewEncoder(w).Encode(response)
+}
+
+// DELETE /students/
+func (h *studentsHandler) DeleteStudentsHandler(w http.ResponseWriter, r *http.Request) {
+	var ids []int
+	err := json.NewDecoder(r.Body).Decode(&ids)
+	if err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	deletedIds, err := h.service.DeleteAll(ids)
+	if err != nil {
+		handleServiceError(w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	response := struct {
+		Status     string `json:"status"`
+		DeletedIDs []int  `json:"deleted_ids"`
+	}{
+		Status:     "success",
+		DeletedIDs: deletedIds,
+	}
+	json.NewEncoder(w).Encode(response)
 }

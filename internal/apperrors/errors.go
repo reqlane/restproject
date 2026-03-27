@@ -6,11 +6,12 @@ import (
 )
 
 var (
-	ErrNotFound     = errors.New("not found")
-	ErrMissingID    = errors.New("missing id")
-	ErrInvalidID    = errors.New("invalid id")
-	ErrInvalidField = errors.New("invalid field type")
-	ErrValidation   = errors.New("validation error")
+	ErrNotFound            = errors.New("not found")
+	ErrMissingID           = errors.New("missing id")
+	ErrInvalidID           = errors.New("invalid id")
+	ErrInvalidField        = errors.New("invalid field type")
+	ErrValidation          = errors.New("validation error")
+	ErrForeignKeyViolation = errors.New("foreign key violation")
 )
 
 type Error struct {
@@ -48,7 +49,7 @@ func FromError(err error) *HTTPError {
 		switch err.DomainError() {
 		case ErrNotFound:
 			httpError.Status = http.StatusNotFound
-		case ErrMissingID, ErrInvalidID, ErrInvalidField, ErrValidation:
+		case ErrMissingID, ErrInvalidID, ErrInvalidField, ErrValidation, ErrForeignKeyViolation:
 			httpError.Status = http.StatusBadRequest
 		default:
 			httpError.Status = http.StatusInternalServerError

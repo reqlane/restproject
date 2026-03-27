@@ -20,7 +20,7 @@ func NewTeachersHandler(service *services.TeachersService) *teachersHandler {
 func (h *teachersHandler) GetSingleTeacherHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
-		http.Error(w, "Invalid teacher ID", http.StatusBadRequest)
+		http.Error(w, "invalid teacher id", http.StatusBadRequest)
 		return
 	}
 
@@ -36,11 +36,11 @@ func (h *teachersHandler) GetSingleTeacherHandler(w http.ResponseWriter, r *http
 
 // GET /teachers/
 func (h *teachersHandler) GetTeachersHandler(w http.ResponseWriter, r *http.Request) {
-	criteria := models.TeacherCriteria{
+	criteria := models.Criteria{
 		Filters:  map[string]string{},
 		Sortings: r.URL.Query()["sortby"],
 	}
-	addFiltersCriteria(r, &criteria)
+	criteria.AddFilters(r.URL.Query(), models.TeacherFieldNames)
 
 	teachers, err := h.service.GetAllByCriteria(criteria)
 	if err != nil {
@@ -69,7 +69,7 @@ func (h *teachersHandler) PostTeachersHandler(w http.ResponseWriter, r *http.Req
 	decoder.DisallowUnknownFields()
 	err := decoder.Decode(&newTeachers)
 	if err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
 
@@ -97,7 +97,7 @@ func (h *teachersHandler) PostTeachersHandler(w http.ResponseWriter, r *http.Req
 func (h *teachersHandler) PutSingleTeacherHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
-		http.Error(w, "Invalid teacher ID", http.StatusBadRequest)
+		http.Error(w, "invalid teacher id", http.StatusBadRequest)
 		return
 	}
 
@@ -106,7 +106,7 @@ func (h *teachersHandler) PutSingleTeacherHandler(w http.ResponseWriter, r *http
 	decoder.DisallowUnknownFields()
 	err = decoder.Decode(&updatedTeacher)
 	if err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
 
@@ -124,14 +124,14 @@ func (h *teachersHandler) PutSingleTeacherHandler(w http.ResponseWriter, r *http
 func (h *teachersHandler) PatchSingleTeacherHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
-		http.Error(w, "Invalid teacher ID", http.StatusBadRequest)
+		http.Error(w, "invalid teacher id", http.StatusBadRequest)
 		return
 	}
 
 	var update map[string]any
 	err = json.NewDecoder(r.Body).Decode(&update)
 	if err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
 
@@ -150,7 +150,7 @@ func (h *teachersHandler) PatchTeachersHandler(w http.ResponseWriter, r *http.Re
 	var updates []map[string]any
 	err := json.NewDecoder(r.Body).Decode(&updates)
 	if err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
 
@@ -168,7 +168,7 @@ func (h *teachersHandler) PatchTeachersHandler(w http.ResponseWriter, r *http.Re
 func (h *teachersHandler) DeleteSingleTeacherHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
-		http.Error(w, "Invalid teacher ID", http.StatusBadRequest)
+		http.Error(w, "invalid teacher id", http.StatusBadRequest)
 		return
 	}
 
@@ -194,7 +194,7 @@ func (h *teachersHandler) DeleteTeachersHandler(w http.ResponseWriter, r *http.R
 	var ids []int
 	err := json.NewDecoder(r.Body).Decode(&ids)
 	if err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
 

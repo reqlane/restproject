@@ -10,7 +10,6 @@ import (
 	"strings"
 )
 
-// TODO validator package
 func checkBlankFields(value any) error {
 	val := reflect.ValueOf(value)
 	for _, field := range val.Fields() {
@@ -24,7 +23,7 @@ func checkBlankFields(value any) error {
 func extractID(update map[string]any) (int, error) {
 	idRaw, exists := update["id"]
 	if !exists {
-		return 0, apperrors.NewError(apperrors.ErrMissingID, errors.New("missing teacher id in request body"))
+		return 0, apperrors.NewError(apperrors.ErrMissingID, errors.New("missing id in request body"))
 	}
 
 	switch v := idRaw.(type) {
@@ -43,17 +42,17 @@ func extractID(update map[string]any) (int, error) {
 	}
 }
 
-func applyUpdates(teacher *models.Teacher, update map[string]any) error {
-	teacherVal := reflect.ValueOf(teacher).Elem()
-	teacherType := teacherVal.Type()
+func applyUpdates(model models.ModelWithID, update map[string]any) error {
+	modelVal := reflect.ValueOf(model).Elem()
+	modelType := modelVal.Type()
 
 	for k, v := range update {
 		if k == "id" {
 			continue
 		}
-		for i := 0; i < teacherVal.NumField(); i++ {
-			typeField := teacherType.Field(i)
-			valField := teacherVal.Field(i)
+		for i := 0; i < modelVal.NumField(); i++ {
+			typeField := modelType.Field(i)
+			valField := modelVal.Field(i)
 			jsonName := strings.Split(typeField.Tag.Get("json"), ",")[0]
 			if jsonName == k {
 				if valField.CanSet() {
@@ -61,7 +60,7 @@ func applyUpdates(teacher *models.Teacher, update map[string]any) error {
 					if value.Type().ConvertibleTo(typeField.Type) {
 						valField.Set(value.Convert(typeField.Type))
 					} else {
-						return apperrors.NewError(apperrors.ErrInvalidField, fmt.Errorf("invalid type for field '%s' on teacher id%d", k, teacher.ID))
+						return apperrors.NewError(apperrors.ErrInvalidField, fmt.Errorf("invalid type for field '%s' on id %d", k, model.GetID()))
 					}
 				}
 				break
