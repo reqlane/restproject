@@ -18,12 +18,10 @@ func Hpp(config HPPConfig) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if config.CheckQuery && r.URL.Query() != nil {
-				// Filter the query params
 				filterQueryParams(r, config.WhiteList)
 			}
 
 			if config.CheckBody && r.Method == http.MethodPost && isCorrectContentType(r, config.CheckBodyOnlyForContentType) {
-				// Filter the body params
 				filterBodyParams(r, config.WhiteList)
 			}
 
@@ -45,8 +43,7 @@ func filterQueryParams(r *http.Request, whiteList []string) {
 			continue
 		}
 		if len(v) > 1 {
-			query.Set(k, v[0]) // first value
-			// query.Set(k, v[len(v)-1]) // last value
+			query.Set(k, v[0])
 		}
 	}
 
@@ -66,8 +63,7 @@ func filterBodyParams(r *http.Request, whiteList []string) {
 			continue
 		}
 		if len(v) > 1 {
-			r.Form.Set(k, v[0]) // first value
-			// r.Form.Set(k, v[len(v)-1]) // last value
+			r.Form.Set(k, v[0])
 		}
 	}
 }

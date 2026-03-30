@@ -15,9 +15,8 @@ func Cors(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
 
-		// if origin != "" {
 		if !isOriginAllowed(origin) {
-			http.Error(w, "Not allowed by CORS", http.StatusForbidden)
+			http.Error(w, "not allowed by cors", http.StatusForbidden)
 			return
 		}
 

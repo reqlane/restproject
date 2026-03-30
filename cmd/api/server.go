@@ -47,15 +47,15 @@ func main() {
 	// 	WhiteList:                   []string{"sortBy", "sortOrder", "name", "age", "class"},
 	// }
 
-	// secureMux := utils.ApplyMiddlewares(router,
-	// 	mw.ResponseTime,
-	// 	rl.RateLimit,
-	// 	mw.Cors,
-	// 	mw.SecurityHeaders,
-	// 	mw.Hpp(hppConfig),
-	// 	mw.Compression,
-	// )
-	secureMux := mw.SecurityHeaders(mux)
+	secureMux := mw.ApplyMiddlewares(mux,
+		// mw.ResponseTime,
+		// rl.RateLimit,
+		// mw.Cors,
+		mw.JWTMiddleware,
+		mw.SecurityHeaders,
+		// mw.Hpp(hppConfig),
+		// mw.Compression,
+	)
 
 	server := http.Server{
 		Addr: ":" + port,

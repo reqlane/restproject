@@ -40,13 +40,13 @@ func (rl *rateLimiter) RateLimit(next http.Handler) http.Handler {
 
 		visitorIP, _, err := net.SplitHostPort(r.RemoteAddr) // Not working if hosted behind load balancer (Nginx, Cloudflare etc.)
 		if err != nil {
-			http.Error(w, "Could not parse remote address", http.StatusInternalServerError)
+			http.Error(w, "could not parse remote address", http.StatusInternalServerError)
 			return
 		}
 
 		rl.visitors[visitorIP]++
 		if rl.visitors[visitorIP] > rl.limit {
-			http.Error(w, "Too many requests", http.StatusTooManyRequests)
+			http.Error(w, "too many requests", http.StatusTooManyRequests)
 			return
 		}
 
