@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"os"
 	mw "restproject/internal/api/middlewares"
-	"restproject/internal/api/router"
+	"restproject/internal/api/routers"
 	"restproject/internal/db"
 
 	"github.com/joho/godotenv"
@@ -31,7 +31,7 @@ func main() {
 	cert := "cert.pem"
 	key := "key.pem"
 
-	app := router.NewApp(db)
+	app := routers.NewApp(db)
 	mux := app.Router()
 
 	tlsConfig := &tls.Config{

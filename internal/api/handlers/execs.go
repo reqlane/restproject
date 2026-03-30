@@ -50,9 +50,9 @@ func (h *execsHandler) GetExecsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := struct {
-		Status string        `json:"status"`
-		Count  int           `json:"count"`
-		Data   []models.Exec `json:"data"`
+		Status string                `json:"status"`
+		Count  int                   `json:"count"`
+		Data   []models.ExecResponse `json:"data"`
 	}{
 		Status: "success",
 		Count:  len(execs),
@@ -83,9 +83,9 @@ func (h *execsHandler) PostExecsHandler(w http.ResponseWriter, r *http.Request) 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	response := struct {
-		Status string        `json:"status"`
-		Count  int           `json:"count"`
-		Data   []models.Exec `json:"data"`
+		Status string                `json:"status"`
+		Count  int                   `json:"count"`
+		Data   []models.ExecResponse `json:"data"`
 	}{
 		Status: "success",
 		Count:  len(addedExecs),
@@ -163,18 +163,52 @@ func (h *execsHandler) DeleteSingleExecHandler(w http.ResponseWriter, r *http.Re
 	json.NewEncoder(w).Encode(response)
 }
 
-// POST /execs/login
-func (h *execsHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
-	var credentials models.ExecCredentials
+// POST /execs/{id}/updatepassword
+func (h *execsHandler) UpdatePasswordHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "invalid exec id", http.StatusBadRequest)
+		return
+	}
+
+	var req models.UpdatePasswordRequest
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
-	err := decoder.Decode(&credentials)
+	err = decoder.Decode(&req)
 	if err != nil {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	tokenString, err := h.service.Login(&credentials)
+	tokenString, err := h.service.UpdatePassword(id, &req)
+	if err != nil {
+		handleServiceError(w, err)
+		return
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "Bearer",
+		Value:    tokenString,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   true,
+		Expires:  time.Now().Add(24 * time.Hour),
+		SameSite: http.SameSiteStrictMode,
+	})
+}
+
+// POST /execs/login
+func (h *execsHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
+	var req models.ExecCredentials
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	err := decoder.Decode(&req)
+	if err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	tokenString, err := h.service.Login(&req)
 	if err != nil {
 		handleServiceError(w, err)
 		return

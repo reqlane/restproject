@@ -1,4 +1,4 @@
-package router
+package routers
 
 import (
 	"net/http"
@@ -19,7 +19,7 @@ func (a *app) execsRouter(mux *http.ServeMux) {
 	mux.HandleFunc("GET /execs/{id}", execsHandler.GetSingleExecHandler)
 	mux.HandleFunc("PATCH /execs/{id}", execsHandler.PatchSingleExecHandler)
 	mux.HandleFunc("DELETE /execs/{id}", execsHandler.DeleteSingleExecHandler)
-	mux.HandleFunc("POST /execs/{id}/updatepassword", execsHandler.GetExecsHandler)
+	mux.HandleFunc("POST /execs/{id}/updatepassword", execsHandler.UpdatePasswordHandler)
 
 	mux.HandleFunc("POST /execs/login", execsHandler.LoginHandler)
 	mux.HandleFunc("POST /execs/logout", execsHandler.LogoutHandler)

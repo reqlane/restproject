@@ -38,7 +38,11 @@ func generateInsertQuery(table string, model any) string {
 	var columns, placeholders []string
 	for field := range modelType.Fields() {
 		dbTag := field.Tag.Get("db")
-		dbTag = strings.Split(dbTag, ",")[0]
+		dbTagSplit := strings.Split(dbTag, ",")
+		if len(dbTagSplit) >= 2 && dbTagSplit[1] == "omitinsert" {
+			continue
+		}
+		dbTag = dbTagSplit[0]
 		if dbTag != "" && dbTag != "id" {
 			columns = append(columns, dbTag)
 			placeholders = append(placeholders, "?")
@@ -53,7 +57,11 @@ func getStructValues(model any) []any {
 	values := []any{}
 	for i := 0; i < modelType.NumField(); i++ {
 		dbTag := modelType.Field(i).Tag.Get("db")
-		dbTag = strings.Split(dbTag, ",")[0]
+		dbTagSplit := strings.Split(dbTag, ",")
+		if len(dbTagSplit) >= 2 && dbTagSplit[1] == "omitinsert" {
+			continue
+		}
+		dbTag = dbTagSplit[0]
 		if dbTag != "" && dbTag != "id" {
 			values = append(values, modelValue.Field(i).Interface())
 		}

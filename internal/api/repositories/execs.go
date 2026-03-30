@@ -17,8 +17,8 @@ func NewExecsRepository(db *sql.DB) *ExecsRepository {
 
 func (r *ExecsRepository) GetByID(id int) (*models.Exec, error) {
 	var exec models.Exec
-	query := `SELECT id, first_name, last_name, email, username, user_created_at, inactive_status, role FROM execs WHERE id=?`
-	err := r.db.QueryRow(query, id).Scan(&exec.ID, &exec.FirstName, &exec.LastName, &exec.Email, &exec.Username, &exec.UserCreatedAt, &exec.InactiveStatus, &exec.Role)
+	query := `SELECT id, first_name, last_name, email, username, password, user_created_at, inactive_status, role FROM execs WHERE id=?`
+	err := r.db.QueryRow(query, id).Scan(&exec.ID, &exec.FirstName, &exec.LastName, &exec.Email, &exec.Username, &exec.Password, &exec.UserCreatedAt, &exec.InactiveStatus, &exec.Role)
 	if err != nil {
 		return nil, fmt.Errorf("repo.GetByID: %w", err)
 	}
@@ -83,7 +83,8 @@ func (r *ExecsRepository) SaveAll(execs []models.Exec) ([]models.Exec, error) {
 	}
 	defer stmt.Close()
 
-	for i, newExec := range execs {
+	insertedIDs := make([]int, 0, len(execs))
+	for _, newExec := range execs {
 		values := getStructValues(newExec)
 		result, err := stmt.Exec(values...)
 		if err != nil {
@@ -93,14 +94,23 @@ func (r *ExecsRepository) SaveAll(execs []models.Exec) ([]models.Exec, error) {
 		if err != nil {
 			return nil, fmt.Errorf("repo.SaveAll: %w", err)
 		}
-		execs[i].ID = int(lastID)
+		insertedIDs = append(insertedIDs, int(lastID))
 	}
 
 	err = tx.Commit()
 	if err != nil {
 		return nil, fmt.Errorf("repo.SaveAll: %w", err)
 	}
-	return execs, nil
+
+	savedExecs := make([]models.Exec, 0, len(insertedIDs))
+	for _, id := range insertedIDs {
+		inserted, err := r.GetByID(id)
+		if err != nil {
+			return nil, fmt.Errorf("repo.SaveAll: %w", err)
+		}
+		savedExecs = append(savedExecs, *inserted)
+	}
+	return savedExecs, nil
 }
 
 func (r *ExecsRepository) Update(exec *models.Exec) (*models.Exec, error) {
@@ -144,6 +154,15 @@ func (r *ExecsRepository) Delete(id int) error {
 	_, err := r.db.Exec(query, id)
 	if err != nil {
 		return fmt.Errorf("repo.Delete: %w", err)
+	}
+	return nil
+}
+
+func (r *ExecsRepository) UpdatePassword(exec *models.Exec) error {
+	query := `UPDATE execs SET password=?, password_changed_at=? WHERE id=?`
+	_, err := r.db.Exec(query, exec.Password, exec.PasswordChangedAt, exec.ID)
+	if err != nil {
+		return fmt.Errorf("repo.UpdatePassword: %w", err)
 	}
 	return nil
 }

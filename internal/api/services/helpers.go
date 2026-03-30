@@ -75,24 +75,23 @@ func applyUpdates(model models.ModelWithID, update map[string]any) error {
 	return nil
 }
 
-func encodePassword(model models.ModelWithPassword) error {
-	if len(model.GetPassword()) < 8 {
-		return apperrors.NewError(apperrors.ErrValidation, errors.New("password must be at least 8 characters"))
+func encodePassword(password string) (string, error) {
+	if len(password) < 8 {
+		return "", apperrors.NewError(apperrors.ErrValidation, errors.New("password must be at least 8 characters"))
 	}
 
 	salt := make([]byte, 16)
 	_, err := rand.Read(salt)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	hash := hash(model.GetPassword(), salt)
+	hash := hash(password, salt)
 	saltBase64 := base64.StdEncoding.EncodeToString(salt)
 	hashBase64 := base64.StdEncoding.EncodeToString(hash)
 
 	encodedPassword := fmt.Sprintf("%s.%s", saltBase64, hashBase64)
-	model.SetPassword(encodedPassword)
-	return nil
+	return encodedPassword, nil
 }
 
 func verifyPassword(password string, dbExec *models.Exec) error {
