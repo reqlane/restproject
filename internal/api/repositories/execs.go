@@ -25,6 +25,16 @@ func (r *ExecsRepository) GetByID(id int) (*models.Exec, error) {
 	return &exec, nil
 }
 
+func (r *ExecsRepository) GetByUsername(username string) (*models.Exec, error) {
+	var exec models.Exec
+	query := `SELECT id, first_name, last_name, email, username, password, user_created_at, inactive_status, role FROM execs WHERE username=?`
+	err := r.db.QueryRow(query, username).Scan(&exec.ID, &exec.FirstName, &exec.LastName, &exec.Email, &exec.Username, &exec.Password, &exec.UserCreatedAt, &exec.InactiveStatus, &exec.Role)
+	if err != nil {
+		return nil, fmt.Errorf("repo.GetByID: %w", err)
+	}
+	return &exec, nil
+}
+
 func (r *ExecsRepository) GetAllByCriteria(criteria models.Criteria) ([]models.Exec, error) {
 	var query strings.Builder
 	query.WriteString(`SELECT id, first_name, last_name, email, username, user_created_at, inactive_status, role FROM execs WHERE 1=1`)

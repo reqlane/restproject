@@ -2,6 +2,7 @@ package services
 
 import (
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -85,11 +86,41 @@ func encodePassword(model models.ModelWithPassword) error {
 		return err
 	}
 
-	hash := argon2.IDKey([]byte(model.GetPassword()), salt, 1, 64*1024, 4, 32)
+	hash := hash(model.GetPassword(), salt)
 	saltBase64 := base64.StdEncoding.EncodeToString(salt)
 	hashBase64 := base64.StdEncoding.EncodeToString(hash)
 
-	encodedHash := fmt.Sprintf("%s.%s", saltBase64, hashBase64)
-	model.SetPassword(encodedHash)
+	encodedPassword := fmt.Sprintf("%s.%s", saltBase64, hashBase64)
+	model.SetPassword(encodedPassword)
 	return nil
+}
+
+func verifyPassword(password string, dbExec *models.Exec) error {
+	parts := strings.Split(dbExec.Password, ".")
+	if len(parts) != 2 {
+		return errors.New("invalid encoded hash format")
+	}
+
+	saltBase64 := parts[0]
+	dbHashBase64 := parts[1]
+
+	salt, err := base64.StdEncoding.DecodeString(saltBase64)
+	if err != nil {
+		return err
+	}
+	dbHash, err := base64.StdEncoding.DecodeString(dbHashBase64)
+	if err != nil {
+		return err
+	}
+
+	requestHash := hash(password, salt)
+
+	if len(requestHash) != len(dbHash) || subtle.ConstantTimeCompare(requestHash, dbHash) != 1 {
+		return apperrors.NewError(apperrors.ErrInvalidCredentials, errors.New("invalid credentials"))
+	}
+	return nil
+}
+
+func hash(password string, salt []byte) []byte {
+	return argon2.IDKey([]byte(password), salt, 1, 64*1024, 4, 32)
 }

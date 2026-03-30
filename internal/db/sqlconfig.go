@@ -9,8 +9,6 @@ import (
 )
 
 func ConnectDb() (*sql.DB, error) {
-	fmt.Println("Trying to connect to database")
-
 	user := os.Getenv("DB_USER")
 	password := os.Getenv("DB_PASSWORD")
 	dbhost := os.Getenv("DB_HOST")
@@ -28,6 +26,5 @@ func ConnectDb() (*sql.DB, error) {
 		return nil, err
 	}
 
-	fmt.Println("Connected to database")
 	return db, nil
 }

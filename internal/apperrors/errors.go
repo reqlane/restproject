@@ -12,6 +12,8 @@ var (
 	ErrInvalidField        = errors.New("invalid field type")
 	ErrValidation          = errors.New("validation error")
 	ErrForeignKeyViolation = errors.New("foreign key violation")
+	ErrInactiveAccount     = errors.New("account is inactive")
+	ErrInvalidCredentials  = errors.New("invalid credentials")
 )
 
 type Error struct {
@@ -51,14 +53,16 @@ func FromError(err error) *HTTPError {
 			httpError.Status = http.StatusNotFound
 		case ErrMissingID, ErrInvalidID, ErrInvalidField, ErrValidation, ErrForeignKeyViolation:
 			httpError.Status = http.StatusBadRequest
+		case ErrInactiveAccount, ErrInvalidCredentials:
+			httpError.Status = http.StatusForbidden
 		default:
 			httpError.Status = http.StatusInternalServerError
-			httpError.Message = "Internal server error"
+			httpError.Message = "internal server error"
 		}
 		return httpError
 	}
 	return &HTTPError{
 		Status:  http.StatusInternalServerError,
-		Message: "Internal server error",
+		Message: "internal server error",
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"restproject/internal/api/models"
 	"restproject/internal/api/services"
 	"strconv"
+	"time"
 )
 
 type execsHandler struct {
@@ -160,4 +161,31 @@ func (h *execsHandler) DeleteSingleExecHandler(w http.ResponseWriter, r *http.Re
 		ID:     id,
 	}
 	json.NewEncoder(w).Encode(response)
+}
+
+// POST /execs/login
+func (h *execsHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
+	var credentials models.ExecCredentials
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	err := decoder.Decode(&credentials)
+	if err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	tokenString, err := h.service.Login(&credentials)
+	if err != nil {
+		handleServiceError(w, err)
+		return
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "Bearer",
+		Value:    tokenString,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   true,
+		Expires:  time.Now().Add(24 * time.Hour),
+	})
 }

@@ -7,6 +7,7 @@ import (
 	"restproject/internal/api/models"
 	"restproject/internal/api/repositories"
 	"restproject/internal/apperrors"
+	"restproject/internal/auth"
 )
 
 type ExecsService struct {
@@ -118,4 +119,34 @@ func (s *ExecsService) Delete(id int) error {
 		return fmt.Errorf("service.Delete: %w", err)
 	}
 	return nil
+}
+
+func (s *ExecsService) Login(credentials *models.ExecCredentials) (string, error) {
+	if credentials.Username == "" || credentials.Password == "" {
+		return "", fmt.Errorf("service.Login: %w", apperrors.NewError(apperrors.ErrValidation, errors.New("username and password are required")))
+	}
+
+	exec, err := s.repo.GetByUsername(credentials.Username)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", fmt.Errorf("service.Login: %w", apperrors.NewError(apperrors.ErrInvalidCredentials, errors.New("invalid credentials")))
+		}
+		return "", fmt.Errorf("service.Login: %w", err)
+	}
+
+	if exec.InactiveStatus {
+		return "", fmt.Errorf("service.Login: %w", apperrors.NewError(apperrors.ErrInactiveAccount, errors.New("account is inactive")))
+	}
+
+	err = verifyPassword(credentials.Password, exec)
+	if err != nil {
+		return "", fmt.Errorf("service.Login: %w", err)
+	}
+
+	tokenString, err := auth.SignToken(exec.ID, exec.Username, exec.Role)
+	if err != nil {
+		return "", fmt.Errorf("service.Login: %w", err)
+	}
+
+	return tokenString, nil
 }

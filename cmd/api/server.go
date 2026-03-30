@@ -16,13 +16,13 @@ import (
 func main() {
 	err := godotenv.Load("../../.env")
 	if err != nil {
-		fmt.Println("Error:", err)
+		log.Println("Error:", err)
 		return
 	}
 
 	db, err := db.ConnectDb()
 	if err != nil {
-		fmt.Println("Error:", err)
+		log.Println("Error:", err)
 		return
 	}
 	defer db.Close()

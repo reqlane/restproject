@@ -28,3 +28,8 @@ func (e *Exec) GetPassword() string {
 func (e *Exec) SetPassword(password string) {
 	e.Password = password
 }
+
+type ExecCredentials struct {
+	Username string `json:"username,omitempty"`
+	Password string `json:"password,omitempty"`
+}
