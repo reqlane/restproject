@@ -1,6 +1,8 @@
 package services
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"reflect"
@@ -8,6 +10,8 @@ import (
 	"restproject/internal/apperrors"
 	"strconv"
 	"strings"
+
+	"golang.org/x/crypto/argon2"
 )
 
 func checkBlankFields(value any) error {
@@ -67,5 +71,25 @@ func applyUpdates(model models.ModelWithID, update map[string]any) error {
 			}
 		}
 	}
+	return nil
+}
+
+func encodePassword(model models.ModelWithPassword) error {
+	if len(model.GetPassword()) < 8 {
+		return apperrors.NewError(apperrors.ErrValidation, errors.New("password must be at least 8 characters"))
+	}
+
+	salt := make([]byte, 16)
+	_, err := rand.Read(salt)
+	if err != nil {
+		return err
+	}
+
+	hash := argon2.IDKey([]byte(model.GetPassword()), salt, 1, 64*1024, 4, 32)
+	saltBase64 := base64.StdEncoding.EncodeToString(salt)
+	hashBase64 := base64.StdEncoding.EncodeToString(hash)
+
+	encodedHash := fmt.Sprintf("%s.%s", saltBase64, hashBase64)
+	model.SetPassword(encodedHash)
 	return nil
 }

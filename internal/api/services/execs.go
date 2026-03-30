@@ -45,8 +45,12 @@ func (s *ExecsService) GetAllByCriteria(criteria models.Criteria) ([]models.Exec
 }
 
 func (s *ExecsService) SaveAll(execs []models.Exec) ([]models.Exec, error) {
-	for _, exec := range execs {
+	for i, exec := range execs {
 		if err := checkBlankFields(exec); err != nil {
+			return nil, fmt.Errorf("service.SaveAll: %w", err)
+		}
+		err := encodePassword(&execs[i])
+		if err != nil {
 			return nil, fmt.Errorf("service.SaveAll: %w", err)
 		}
 	}

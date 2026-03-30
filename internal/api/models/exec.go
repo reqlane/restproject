@@ -20,3 +20,11 @@ type Exec struct {
 func (e *Exec) GetID() int {
 	return e.ID
 }
+
+func (e *Exec) GetPassword() string {
+	return e.Password
+}
+
+func (e *Exec) SetPassword(password string) {
+	e.Password = password
+}
