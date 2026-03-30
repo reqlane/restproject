@@ -98,7 +98,7 @@ func (s *StudentsService) Update(id int, update map[string]any) (*models.Student
 }
 
 func (s *StudentsService) UpdateAll(updates []map[string]any) ([]models.Student, error) {
-	updatedStudent := make([]models.Student, 0, len(updates))
+	updatedStudents := make([]models.Student, 0, len(updates))
 
 	for _, update := range updates {
 		id, err := extractID(update)
@@ -115,14 +115,14 @@ func (s *StudentsService) UpdateAll(updates []map[string]any) ([]models.Student,
 			return nil, fmt.Errorf("service.UpdateAll: %w", err)
 		}
 
-		updatedStudent = append(updatedStudent, *dbStudent)
+		updatedStudents = append(updatedStudents, *dbStudent)
 	}
 
-	updatedStudent, err := s.repo.UpdateAll(updatedStudent)
+	updatedStudents, err := s.repo.UpdateAll(updatedStudents)
 	if err != nil {
 		return nil, fmt.Errorf("service.UpdateAll: %w", err)
 	}
-	return updatedStudent, nil
+	return updatedStudents, nil
 }
 
 func (s *StudentsService) Delete(id int) error {

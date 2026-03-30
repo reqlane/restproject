@@ -1,8 +1,11 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
+	"restproject/internal/api/models"
 	"restproject/internal/api/services"
+	"strconv"
 )
 
 type execsHandler struct {
@@ -13,17 +16,148 @@ func NewExecsHandler(service *services.ExecsService) *execsHandler {
 	return &execsHandler{service: service}
 }
 
-func (h *execsHandler) ExecsHandler(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		w.Write([]byte("Hello GET Method on Execs Route"))
-	case http.MethodPost:
-		w.Write([]byte("Hello POST Method on Execs Route"))
-	case http.MethodPut:
-		w.Write([]byte("Hello PUT Method on Execs Route"))
-	case http.MethodPatch:
-		w.Write([]byte("Hello PATCH Method on Execs Route"))
-	case http.MethodDelete:
-		w.Write([]byte("Hello DELETE Method on Execs Route"))
+// GET /execs/{id}
+func (h *execsHandler) GetSingleExecHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "invalid exec id", http.StatusBadRequest)
+		return
 	}
+
+	exec, err := h.service.GetByID(id)
+	if err != nil {
+		handleServiceError(w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(exec)
+}
+
+// GET /execs/
+func (h *execsHandler) GetExecsHandler(w http.ResponseWriter, r *http.Request) {
+	criteria := models.Criteria{
+		Filters:  map[string]string{},
+		Sortings: r.URL.Query()["sortby"],
+	}
+	criteria.AddFilters(r.URL.Query(), models.ExecFieldNames)
+
+	execs, err := h.service.GetAllByCriteria(criteria)
+	if err != nil {
+		handleServiceError(w, err)
+		return
+	}
+
+	response := struct {
+		Status string        `json:"status"`
+		Count  int           `json:"count"`
+		Data   []models.Exec `json:"data"`
+	}{
+		Status: "success",
+		Count:  len(execs),
+		Data:   execs,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// POST /execs/
+func (h *execsHandler) PostExecsHandler(w http.ResponseWriter, r *http.Request) {
+	var newExecs []models.Exec
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	err := decoder.Decode(&newExecs)
+	if err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	addedExecs, err := h.service.SaveAll(newExecs)
+	if err != nil {
+		handleServiceError(w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	response := struct {
+		Status string        `json:"status"`
+		Count  int           `json:"count"`
+		Data   []models.Exec `json:"data"`
+	}{
+		Status: "success",
+		Count:  len(addedExecs),
+		Data:   addedExecs,
+	}
+	json.NewEncoder(w).Encode(response)
+}
+
+// PATCH /execs/{id}
+func (h *execsHandler) PatchSingleExecHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "invalid exec id", http.StatusBadRequest)
+		return
+	}
+
+	var update map[string]any
+	err = json.NewDecoder(r.Body).Decode(&update)
+	if err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	updatedExec, err := h.service.Update(id, update)
+	if err != nil {
+		handleServiceError(w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(updatedExec)
+}
+
+// PATCH /execs/
+func (h *execsHandler) PatchExecsHandler(w http.ResponseWriter, r *http.Request) {
+	var updates []map[string]any
+	err := json.NewDecoder(r.Body).Decode(&updates)
+	if err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	updatedExecs, err := h.service.UpdateAll(updates)
+	if err != nil {
+		handleServiceError(w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(updatedExecs)
+}
+
+// DELETE /execs/{id}
+func (h *execsHandler) DeleteSingleExecHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "invalid exec id", http.StatusBadRequest)
+		return
+	}
+
+	err = h.service.Delete(id)
+	if err != nil {
+		handleServiceError(w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	response := struct {
+		Status string `json:"status"`
+		ID     int    `json:"id"`
+	}{
+		Status: "success",
+		ID:     id,
+	}
+	json.NewEncoder(w).Encode(response)
 }

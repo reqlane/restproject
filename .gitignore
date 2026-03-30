@@ -31,3 +31,4 @@ go.work.sum
 # test data
 teachersdata.json
 studentsdata.json
+execsdata.json

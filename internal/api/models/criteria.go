@@ -1,6 +1,8 @@
 package models
 
-import "net/url"
+import (
+	"net/url"
+)
 
 var TeacherFieldNames = []string{
 	"first_name",
@@ -15,6 +17,15 @@ var StudentFieldNames = []string{
 	"last_name",
 	"email",
 	"class",
+}
+
+var ExecFieldNames = []string{
+	"first_name",
+	"last_name",
+	"email",
+	"username",
+	"inactive_status",
+	"role",
 }
 
 type Criteria struct {
