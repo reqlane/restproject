@@ -260,3 +260,26 @@ func (h *execsHandler) ForgotPasswordHandler(w http.ResponseWriter, r *http.Requ
 
 	fmt.Fprintf(w, "password reset link sent to %s", req.Email)
 }
+
+// POST /execs/resetpassword/reset/{resetcode}
+func (h *execsHandler) ResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
+	token := r.PathValue("resetcode")
+
+	var req models.ResetPasswordRequest
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	err := decoder.Decode(&req)
+	if err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+	req.Token = token
+
+	err = h.service.ResetPassword(&req)
+	if err != nil {
+		handleServiceError(w, err)
+		return
+	}
+
+	fmt.Fprint(w, "password reset successfully")
+}

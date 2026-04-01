@@ -1,7 +1,9 @@
 package services
 
 import (
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -219,13 +221,6 @@ func (s *ExecsService) ForgotPassword(email string) error {
 		return fmt.Errorf("service.ForgotPassword: %w", err)
 	}
 
-	exec.PasswordResetToken = sql.NullString{String: hashedToken, Valid: true}
-	exec.PasswordTokenExpires = sql.NullString{String: expiry, Valid: true}
-	err = s.repo.UpdatePasswordResetToken(exec)
-	if err != nil {
-		return fmt.Errorf("service.ForgotPassword: %w", err)
-	}
-
 	resetURL := fmt.Sprintf("https://localhost:3000/execs/resetpassword/reset/%s", token)
 	message := fmt.Sprintf("Forgot your password? Reset your password using the following link:\n"+
 		"%s\n"+
@@ -238,6 +233,63 @@ func (s *ExecsService) ForgotPassword(email string) error {
 	err = sendEmail("schooladmin@school.com", email, "Password reset link", message)
 	if err != nil {
 		return fmt.Errorf("service.ForgotPassword: %w", err)
+	}
+
+	exec.PasswordResetToken = sql.NullString{String: hashedToken, Valid: true}
+	exec.PasswordTokenExpires = sql.NullString{String: expiry, Valid: true}
+	err = s.repo.UpdatePasswordResetToken(exec)
+	if err != nil {
+		return fmt.Errorf("service.ForgotPassword: %w", err)
+	}
+	return nil
+}
+
+func (s *ExecsService) ResetPassword(req *models.ResetPasswordRequest) error {
+	if req.NewPassword == "" || req.ConfirmPassword == "" {
+		return apperrors.NewError(apperrors.ErrValidation, errors.New("passwords are required"))
+	}
+	if req.NewPassword != req.ConfirmPassword {
+		return apperrors.NewError(apperrors.ErrValidation, errors.New("passwords should match"))
+	}
+	encodedPassword, err := encodePassword(req.NewPassword)
+	if err != nil {
+		return fmt.Errorf("service.ResetPassword: %w", err)
+	}
+
+	bytes, err := hex.DecodeString(req.Token)
+	if err != nil {
+		return fmt.Errorf("service.ResetPassword: %w", err)
+	}
+	hashedTokenBytes := sha256.Sum256(bytes)
+	hashedToken := hex.EncodeToString(hashedTokenBytes[:])
+
+	exec, err := s.repo.GetByPasswordResetToken(hashedToken)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return apperrors.NewError(apperrors.ErrNotFound, errors.New("password reset link is invalid or has already been used"))
+		}
+		return fmt.Errorf("service.ResetPassword: %w", err)
+	}
+
+	passwordTokenExpires, err := time.Parse(time.RFC3339, exec.PasswordTokenExpires.String)
+	if err != nil {
+		return fmt.Errorf("service.ResetPassword: %w", err)
+	}
+	if time.Now().After(passwordTokenExpires) {
+		err = s.repo.ResetPassword(exec)
+		if err != nil {
+			return fmt.Errorf("service.ResetPassword: %w", err)
+		}
+		return apperrors.NewError(apperrors.ErrResourceGone, errors.New("password reset link has expired"))
+	}
+
+	currentTime := time.Now().Format(time.RFC3339)
+	exec.PasswordChangedAt = sql.NullString{String: currentTime, Valid: true}
+	exec.Password = encodedPassword
+
+	err = s.repo.ResetPassword(exec)
+	if err != nil {
+		return fmt.Errorf("service.ResetPassword: %w", err)
 	}
 	return nil
 }

@@ -56,8 +56,8 @@ func (execs Execs) ToResponse() []ExecResponse {
 }
 
 type ExecCredentials struct {
-	Username string `json:"username,omitempty"`
-	Password string `json:"password,omitempty"`
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
 type UpdatePasswordRequest struct {
@@ -65,7 +65,8 @@ type UpdatePasswordRequest struct {
 	NewPassword     string `json:"new_password"`
 }
 
-type UpdatePasswordResponse struct {
+type ResetPasswordRequest struct {
 	Token           string `json:"token"`
-	PasswordUpdated bool   `json:"password_updated"`
+	NewPassword     string `json:"new_password"`
+	ConfirmPassword string `json:"confirm_password"`
 }

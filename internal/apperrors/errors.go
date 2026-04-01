@@ -14,6 +14,7 @@ var (
 	ErrForeignKeyViolation = errors.New("foreign key violation")
 	ErrInactiveAccount     = errors.New("account is inactive")
 	ErrInvalidCredentials  = errors.New("invalid credentials")
+	ErrResourceGone        = errors.New("resource gone")
 	ErrInternalServerError = errors.New("internal server error")
 )
 
@@ -56,6 +57,8 @@ func FromError(err error) *HTTPError {
 			httpError.Status = http.StatusBadRequest
 		case ErrInactiveAccount, ErrInvalidCredentials:
 			httpError.Status = http.StatusForbidden
+		case ErrResourceGone:
+			httpError.Status = http.StatusGone
 		case ErrInternalServerError:
 			httpError.Status = http.StatusInternalServerError
 		default:

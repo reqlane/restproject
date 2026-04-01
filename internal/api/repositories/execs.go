@@ -27,8 +27,8 @@ func (r *ExecsRepository) GetByID(id int) (*models.Exec, error) {
 
 func (r *ExecsRepository) GetByUsername(username string) (*models.Exec, error) {
 	var exec models.Exec
-	query := `SELECT id, first_name, last_name, email, username, password, user_created_at, inactive_status, role FROM execs WHERE username=?`
-	err := r.db.QueryRow(query, username).Scan(&exec.ID, &exec.FirstName, &exec.LastName, &exec.Email, &exec.Username, &exec.Password, &exec.UserCreatedAt, &exec.InactiveStatus, &exec.Role)
+	query := `SELECT id, username, password, inactive_status, role FROM execs WHERE username=?`
+	err := r.db.QueryRow(query, username).Scan(&exec.ID, &exec.Username, &exec.Password, &exec.InactiveStatus, &exec.Role)
 	if err != nil {
 		return nil, fmt.Errorf("repo.GetByUsername: %w", err)
 	}
@@ -37,8 +37,18 @@ func (r *ExecsRepository) GetByUsername(username string) (*models.Exec, error) {
 
 func (r *ExecsRepository) GetByEmail(email string) (*models.Exec, error) {
 	var exec models.Exec
-	query := `SELECT id, first_name, last_name, email, username, password, user_created_at, inactive_status, role FROM execs WHERE email=?`
-	err := r.db.QueryRow(query, email).Scan(&exec.ID, &exec.FirstName, &exec.LastName, &exec.Email, &exec.Username, &exec.Password, &exec.UserCreatedAt, &exec.InactiveStatus, &exec.Role)
+	query := `SELECT id FROM execs WHERE email=?`
+	err := r.db.QueryRow(query, email).Scan(&exec.ID)
+	if err != nil {
+		return nil, fmt.Errorf("repo.GetByEmail: %w", err)
+	}
+	return &exec, nil
+}
+
+func (r *ExecsRepository) GetByPasswordResetToken(token string) (*models.Exec, error) {
+	var exec models.Exec
+	query := `SELECT id, email, password, password_changed_at, password_token_expires FROM execs WHERE password_reset_token=?`
+	err := r.db.QueryRow(query, token).Scan(&exec.ID, &exec.Email, &exec.Password, &exec.PasswordChangedAt, &exec.PasswordTokenExpires)
 	if err != nil {
 		return nil, fmt.Errorf("repo.GetByEmail: %w", err)
 	}
@@ -182,6 +192,15 @@ func (r *ExecsRepository) UpdatePasswordResetToken(exec *models.Exec) error {
 	_, err := r.db.Exec(query, exec.PasswordResetToken, exec.PasswordTokenExpires, exec.ID)
 	if err != nil {
 		return fmt.Errorf("repo.UpdatePasswordResetToken: %w", err)
+	}
+	return nil
+}
+
+func (r *ExecsRepository) ResetPassword(exec *models.Exec) error {
+	query := `UPDATE execs SET password=?, password_changed_at=?, password_reset_token=NULL, password_token_expires=NULL WHERE id=?`
+	_, err := r.db.Exec(query, exec.Password, exec.PasswordChangedAt, exec.ID)
+	if err != nil {
+		return fmt.Errorf("repo.UpdatePassword: %w", err)
 	}
 	return nil
 }
