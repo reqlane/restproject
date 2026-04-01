@@ -4,10 +4,12 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"os"
 	"restproject/internal/api/models"
 	"restproject/internal/api/repositories"
 	"restproject/internal/apperrors"
 	"restproject/internal/auth"
+	"strconv"
 	"time"
 )
 
@@ -187,4 +189,55 @@ func (s *ExecsService) Login(credentials *models.ExecCredentials) (string, error
 	}
 
 	return tokenString, nil
+}
+
+func (s *ExecsService) ForgotPassword(email string) error {
+	if email == "" {
+		return fmt.Errorf("service.ForgotPassword: %w", apperrors.NewError(apperrors.ErrValidation, errors.New("user email is required")))
+	}
+	exec, err := s.repo.GetByEmail(email)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil
+		}
+		return fmt.Errorf("service.ForgotPassword: %w", err)
+	}
+
+	resetTokenDurationMins := os.Getenv("RESET_TOKEN_DURATION_MIN")
+	if resetTokenDurationMins == "" {
+		resetTokenDurationMins = "10"
+	}
+	mins, err := strconv.Atoi(resetTokenDurationMins)
+	if err != nil {
+		return fmt.Errorf("service.ForgotPassword: %w", err)
+	}
+	duration := time.Duration(mins) * time.Minute
+	expiry := time.Now().Add(duration).Format(time.RFC3339)
+
+	token, hashedToken, err := generatePasswordResetToken()
+	if err != nil {
+		return fmt.Errorf("service.ForgotPassword: %w", err)
+	}
+
+	exec.PasswordResetToken = sql.NullString{String: hashedToken, Valid: true}
+	exec.PasswordTokenExpires = sql.NullString{String: expiry, Valid: true}
+	err = s.repo.UpdatePasswordResetToken(exec)
+	if err != nil {
+		return fmt.Errorf("service.ForgotPassword: %w", err)
+	}
+
+	resetURL := fmt.Sprintf("https://localhost:3000/execs/resetpassword/reset/%s", token)
+	message := fmt.Sprintf("Forgot your password? Reset your password using the following link:\n"+
+		"%s\n"+
+		"If you didn't request a password reset, please ignore this email.\n"+
+		"This link is only valid for %s minutes.",
+		resetURL,
+		resetTokenDurationMins,
+	)
+
+	err = sendEmail("schooladmin@school.com", email, "Password reset link", message)
+	if err != nil {
+		return fmt.Errorf("service.ForgotPassword: %w", err)
+	}
+	return nil
 }

@@ -51,7 +51,7 @@ func main() {
 		// mw.ResponseTime,
 		// rl.RateLimit,
 		// mw.Cors,
-		mw.WithPathsExcluded(mw.JWTMiddleware, "/execs/login"),
+		mw.WithPathsExcluded(mw.JWTMiddleware, "/execs/login", "/execs/forgotpassword"),
 		mw.SecurityHeaders,
 		// mw.Hpp(hppConfig),
 		// mw.Compression,

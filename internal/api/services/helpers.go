@@ -2,8 +2,10 @@ package services
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"reflect"
@@ -12,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/go-mail/mail/v2"
 	"golang.org/x/crypto/argon2"
 )
 
@@ -122,4 +125,28 @@ func verifyPassword(password string, dbExec *models.Exec) error {
 
 func hash(password string, salt []byte) []byte {
 	return argon2.IDKey([]byte(password), salt, 1, 64*1024, 4, 32)
+}
+
+func generatePasswordResetToken() (string, string, error) {
+	tokenBytes := make([]byte, 32)
+	_, err := rand.Read(tokenBytes)
+	if err != nil {
+		return "", "", err
+	}
+	token := hex.EncodeToString(tokenBytes)
+
+	hashedTokenBytes := sha256.Sum256(tokenBytes)
+	hashedToken := hex.EncodeToString(hashedTokenBytes[:])
+	return token, hashedToken, nil
+}
+
+func sendEmail(from, to, subject, message string) error {
+	m := mail.NewMessage()
+	m.SetHeader("From", from)
+	m.SetHeader("To", to)
+	m.SetHeader("Subject", subject)
+	m.SetBody("text/plain", message)
+
+	d := mail.NewDialer("localhost", 1025, "", "")
+	return d.DialAndSend(m)
 }

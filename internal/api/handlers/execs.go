@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"restproject/internal/api/models"
 	"restproject/internal/api/services"
@@ -236,4 +237,26 @@ func (h *execsHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 		Expires:  time.Unix(0, 0),
 		SameSite: http.SameSiteStrictMode,
 	})
+}
+
+// POST /execs/forgotpassword
+func (h *execsHandler) ForgotPasswordHandler(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Email string `json:"email"`
+	}
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	err := decoder.Decode(&req)
+	if err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	err = h.service.ForgotPassword(req.Email)
+	if err != nil {
+		handleServiceError(w, err)
+		return
+	}
+
+	fmt.Fprintf(w, "password reset link sent to %s", req.Email)
 }
