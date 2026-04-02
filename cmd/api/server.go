@@ -9,6 +9,7 @@ import (
 	mw "restproject/internal/api/middlewares"
 	"restproject/internal/api/routers"
 	"restproject/internal/db"
+	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -38,29 +39,28 @@ func main() {
 		MinVersion: tls.VersionTLS12,
 	}
 
-	// rl := mw.NewRateLimiter(5, time.Minute)
+	rl := mw.NewRateLimiter(5, time.Minute)
 
-	// hppConfig := mw.HPPConfig{
-	// 	CheckQuery:                  true,
-	// 	CheckBody:                   true,
-	// 	CheckBodyOnlyForContentType: "application/x-www-form-urlencoded",
-	// 	WhiteList:                   []string{"sortBy", "sortOrder", "first_name", "last_name", "email", "class", "subject", "username"},
-	// }
+	hppConfig := mw.HPPConfig{
+		CheckQuery:                  true,
+		CheckBody:                   true,
+		CheckBodyOnlyForContentType: "application/x-www-form-urlencoded",
+		WhiteList:                   []string{"sortBy", "sortOrder", "first_name", "last_name", "email", "class", "subject", "username"},
+	}
 
 	secureMux := mw.ApplyMiddlewares(mux,
-		// mw.ResponseTime,
-		// rl.RateLimit,
-		// mw.Cors,
-		mw.WithPathsExcluded(mw.JWTMiddleware, "/execs/login", "/execs/forgotpassword", "/execs/resetpassword/reset"),
+		mw.ResponseTime,
+		rl.RateLimit,
+		mw.Cors,
 		mw.SecurityHeaders,
-		// mw.Hpp(hppConfig),
-		// mw.XSSMiddleware,
-		// mw.Compression,
+		mw.WithPathsExcluded(mw.JWTMiddleware, "/execs/login", "/execs/forgotpassword", "/execs/resetpassword/reset"),
+		mw.Hpp(hppConfig),
+		mw.XSSMiddleware,
+		mw.Compression,
 	)
 
 	server := http.Server{
-		Addr: ":" + port,
-		// Handler: mux,
+		Addr:      ":" + port,
 		Handler:   secureMux,
 		TLSConfig: tlsConfig,
 	}
