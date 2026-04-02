@@ -18,7 +18,6 @@ func NewExecsHandler(service *services.ExecsService) *execsHandler {
 	return &execsHandler{service: service}
 }
 
-// GET /execs/{id}
 func (h *execsHandler) GetSingleExecHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
@@ -36,7 +35,6 @@ func (h *execsHandler) GetSingleExecHandler(w http.ResponseWriter, r *http.Reque
 	json.NewEncoder(w).Encode(exec)
 }
 
-// GET /execs/
 func (h *execsHandler) GetExecsHandler(w http.ResponseWriter, r *http.Request) {
 	pg := paginationFrom(r)
 	criteria := &models.Criteria{
@@ -69,7 +67,6 @@ func (h *execsHandler) GetExecsHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-// POST /execs/
 func (h *execsHandler) PostExecsHandler(w http.ResponseWriter, r *http.Request) {
 	var newExecs []models.Exec
 	decoder := json.NewDecoder(r.Body)
@@ -100,7 +97,6 @@ func (h *execsHandler) PostExecsHandler(w http.ResponseWriter, r *http.Request) 
 	json.NewEncoder(w).Encode(response)
 }
 
-// PATCH /execs/{id}
 func (h *execsHandler) PatchSingleExecHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
@@ -125,7 +121,6 @@ func (h *execsHandler) PatchSingleExecHandler(w http.ResponseWriter, r *http.Req
 	json.NewEncoder(w).Encode(updatedExec)
 }
 
-// PATCH /execs/
 func (h *execsHandler) PatchExecsHandler(w http.ResponseWriter, r *http.Request) {
 	var updates []map[string]any
 	err := json.NewDecoder(r.Body).Decode(&updates)
@@ -144,7 +139,6 @@ func (h *execsHandler) PatchExecsHandler(w http.ResponseWriter, r *http.Request)
 	json.NewEncoder(w).Encode(updatedExecs)
 }
 
-// DELETE /execs/{id}
 func (h *execsHandler) DeleteSingleExecHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
@@ -169,7 +163,6 @@ func (h *execsHandler) DeleteSingleExecHandler(w http.ResponseWriter, r *http.Re
 	json.NewEncoder(w).Encode(response)
 }
 
-// POST /execs/{id}/updatepassword
 func (h *execsHandler) UpdatePasswordHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
@@ -203,7 +196,6 @@ func (h *execsHandler) UpdatePasswordHandler(w http.ResponseWriter, r *http.Requ
 	})
 }
 
-// POST /execs/login
 func (h *execsHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	var req models.ExecCredentials
 	decoder := json.NewDecoder(r.Body)
@@ -231,7 +223,6 @@ func (h *execsHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// POST /execs/logout
 func (h *execsHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "Bearer",
@@ -244,7 +235,6 @@ func (h *execsHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// POST /execs/forgotpassword
 func (h *execsHandler) ForgotPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Email string `json:"email"`
@@ -266,7 +256,6 @@ func (h *execsHandler) ForgotPasswordHandler(w http.ResponseWriter, r *http.Requ
 	fmt.Fprintf(w, "password reset link sent to %s", req.Email)
 }
 
-// POST /execs/resetpassword/reset/{resetcode}
 func (h *execsHandler) ResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	token := r.PathValue("resetcode")
 

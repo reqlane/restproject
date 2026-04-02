@@ -44,7 +44,7 @@ func main() {
 	// 	CheckQuery:                  true,
 	// 	CheckBody:                   true,
 	// 	CheckBodyOnlyForContentType: "application/x-www-form-urlencoded",
-	// 	WhiteList:                   []string{"sortBy", "sortOrder", "name", "age", "class"},
+	// 	WhiteList:                   []string{"sortBy", "sortOrder", "first_name", "last_name", "email", "class", "subject", "username"},
 	// }
 
 	secureMux := mw.ApplyMiddlewares(mux,
@@ -54,6 +54,7 @@ func main() {
 		mw.WithPathsExcluded(mw.JWTMiddleware, "/execs/login", "/execs/forgotpassword", "/execs/resetpassword/reset"),
 		mw.SecurityHeaders,
 		// mw.Hpp(hppConfig),
+		// mw.XSSMiddleware,
 		// mw.Compression,
 	)
 

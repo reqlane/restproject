@@ -16,7 +16,6 @@ func NewStudentsHandler(service *services.StudentsService) *studentsHandler {
 	return &studentsHandler{service: service}
 }
 
-// GET /students/{id}
 func (h *studentsHandler) GetSingleStudentHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
@@ -34,7 +33,6 @@ func (h *studentsHandler) GetSingleStudentHandler(w http.ResponseWriter, r *http
 	json.NewEncoder(w).Encode(student)
 }
 
-// GET /students/
 func (h *studentsHandler) GetStudentsHandler(w http.ResponseWriter, r *http.Request) {
 	pg := paginationFrom(r)
 	criteria := &models.Criteria{
@@ -67,7 +65,6 @@ func (h *studentsHandler) GetStudentsHandler(w http.ResponseWriter, r *http.Requ
 	json.NewEncoder(w).Encode(response)
 }
 
-// POST /students/
 func (h *studentsHandler) PostStudentsHandler(w http.ResponseWriter, r *http.Request) {
 	var newStudents []models.Student
 	decoder := json.NewDecoder(r.Body)
@@ -98,7 +95,6 @@ func (h *studentsHandler) PostStudentsHandler(w http.ResponseWriter, r *http.Req
 	json.NewEncoder(w).Encode(response)
 }
 
-// PUT /students/{id}
 func (h *studentsHandler) PutSingleStudentHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
@@ -125,7 +121,6 @@ func (h *studentsHandler) PutSingleStudentHandler(w http.ResponseWriter, r *http
 	json.NewEncoder(w).Encode(result)
 }
 
-// PATCH /students/{id}
 func (h *studentsHandler) PatchSingleStudentHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
@@ -150,7 +145,6 @@ func (h *studentsHandler) PatchSingleStudentHandler(w http.ResponseWriter, r *ht
 	json.NewEncoder(w).Encode(updatedStudent)
 }
 
-// PATCH /students/
 func (h *studentsHandler) PatchStudentsHandler(w http.ResponseWriter, r *http.Request) {
 	var updates []map[string]any
 	err := json.NewDecoder(r.Body).Decode(&updates)
@@ -169,7 +163,6 @@ func (h *studentsHandler) PatchStudentsHandler(w http.ResponseWriter, r *http.Re
 	json.NewEncoder(w).Encode(updatedStudents)
 }
 
-// DELETE /students/{id}
 func (h *studentsHandler) DeleteSingleStudentHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
@@ -194,7 +187,6 @@ func (h *studentsHandler) DeleteSingleStudentHandler(w http.ResponseWriter, r *h
 	json.NewEncoder(w).Encode(response)
 }
 
-// DELETE /students/
 func (h *studentsHandler) DeleteStudentsHandler(w http.ResponseWriter, r *http.Request) {
 	var ids []int
 	err := json.NewDecoder(r.Body).Decode(&ids)

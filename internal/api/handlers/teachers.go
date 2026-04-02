@@ -16,7 +16,6 @@ func NewTeachersHandler(service *services.TeachersService) *teachersHandler {
 	return &teachersHandler{service: service}
 }
 
-// GET /teachers/{id}
 func (h *teachersHandler) GetSingleTeacherHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
@@ -34,7 +33,6 @@ func (h *teachersHandler) GetSingleTeacherHandler(w http.ResponseWriter, r *http
 	json.NewEncoder(w).Encode(teacher)
 }
 
-// GET /teachers/
 func (h *teachersHandler) GetTeachersHandler(w http.ResponseWriter, r *http.Request) {
 	pg := paginationFrom(r)
 	criteria := models.Criteria{
@@ -67,7 +65,6 @@ func (h *teachersHandler) GetTeachersHandler(w http.ResponseWriter, r *http.Requ
 	json.NewEncoder(w).Encode(response)
 }
 
-// POST /teachers/
 func (h *teachersHandler) PostTeachersHandler(w http.ResponseWriter, r *http.Request) {
 	var newTeachers []models.Teacher
 	decoder := json.NewDecoder(r.Body)
@@ -98,7 +95,6 @@ func (h *teachersHandler) PostTeachersHandler(w http.ResponseWriter, r *http.Req
 	json.NewEncoder(w).Encode(response)
 }
 
-// PUT /teachers/{id}
 func (h *teachersHandler) PutSingleTeacherHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
@@ -125,7 +121,6 @@ func (h *teachersHandler) PutSingleTeacherHandler(w http.ResponseWriter, r *http
 	json.NewEncoder(w).Encode(result)
 }
 
-// PATCH /teachers/{id}
 func (h *teachersHandler) PatchSingleTeacherHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
@@ -150,7 +145,6 @@ func (h *teachersHandler) PatchSingleTeacherHandler(w http.ResponseWriter, r *ht
 	json.NewEncoder(w).Encode(updatedTeacher)
 }
 
-// PATCH /teachers/
 func (h *teachersHandler) PatchTeachersHandler(w http.ResponseWriter, r *http.Request) {
 	var updates []map[string]any
 	err := json.NewDecoder(r.Body).Decode(&updates)
@@ -169,7 +163,6 @@ func (h *teachersHandler) PatchTeachersHandler(w http.ResponseWriter, r *http.Re
 	json.NewEncoder(w).Encode(updatedTeachers)
 }
 
-// DELETE /teachers/{id}
 func (h *teachersHandler) DeleteSingleTeacherHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
@@ -194,7 +187,6 @@ func (h *teachersHandler) DeleteSingleTeacherHandler(w http.ResponseWriter, r *h
 	json.NewEncoder(w).Encode(response)
 }
 
-// DELETE /teachers/
 func (h *teachersHandler) DeleteTeachersHandler(w http.ResponseWriter, r *http.Request) {
 	var ids []int
 	err := json.NewDecoder(r.Body).Decode(&ids)
@@ -220,7 +212,6 @@ func (h *teachersHandler) DeleteTeachersHandler(w http.ResponseWriter, r *http.R
 	json.NewEncoder(w).Encode(response)
 }
 
-// GET /teachers/{id}/students
 func (h *teachersHandler) GetStudentsByTeacherID(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
@@ -248,7 +239,6 @@ func (h *teachersHandler) GetStudentsByTeacherID(w http.ResponseWriter, r *http.
 	json.NewEncoder(w).Encode(response)
 }
 
-// GET /teachers/{id}/students/count
 func (h *teachersHandler) GetStudentsCountByTeacherID(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
