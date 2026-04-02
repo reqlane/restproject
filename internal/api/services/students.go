@@ -37,12 +37,12 @@ func (s *StudentsService) getByID(id int) (*models.Student, error) {
 	return student, nil
 }
 
-func (s *StudentsService) GetAllByCriteria(criteria models.Criteria) ([]models.Student, error) {
-	students, err := s.repo.GetAllByCriteria(criteria)
+func (s *StudentsService) GetAllByCriteria(criteria *models.Criteria, pg *models.Pagination) ([]models.Student, int, error) {
+	students, totalCount, err := s.repo.GetAllByCriteria(criteria, pg)
 	if err != nil {
-		return nil, fmt.Errorf("service.GetAllByCriteria: %w", err)
+		return nil, 0, fmt.Errorf("service.GetAllByCriteria: %w", err)
 	}
-	return students, nil
+	return students, totalCount, nil
 }
 
 func (s *StudentsService) SaveAll(students []models.Student) ([]models.Student, error) {

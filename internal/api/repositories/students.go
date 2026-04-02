@@ -3,6 +3,7 @@ package repositories
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"restproject/internal/api/models"
 	"strings"
 )
@@ -25,7 +26,7 @@ func (r *StudentsRepository) GetByID(id int) (*models.Student, error) {
 	return &student, nil
 }
 
-func (r *StudentsRepository) GetAllByCriteria(criteria models.Criteria) ([]models.Student, error) {
+func (r *StudentsRepository) GetAllByCriteria(criteria *models.Criteria, pg *models.Pagination) ([]models.Student, int, error) {
 	var query strings.Builder
 	query.WriteString(`SELECT id, first_name, last_name, email, class FROM students WHERE 1=1`)
 
@@ -37,9 +38,13 @@ func (r *StudentsRepository) GetAllByCriteria(criteria models.Criteria) ([]model
 
 	addSorting(&query, criteria.Sortings, models.StudentFieldNames)
 
+	offset := (pg.Page - 1) * pg.Limit
+	query.WriteString(" LIMIT ? OFFSET ?")
+	args = append(args, pg.Limit, offset)
+
 	rows, err := r.db.Query(query.String(), args...)
 	if err != nil {
-		return nil, fmt.Errorf("repo.GetAllByCriteria: %w", err)
+		return nil, 0, fmt.Errorf("repo.GetAllByCriteria: %w", err)
 	}
 	defer rows.Close()
 
@@ -48,16 +53,22 @@ func (r *StudentsRepository) GetAllByCriteria(criteria models.Criteria) ([]model
 		var student models.Student
 		err = rows.Scan(&student.ID, &student.FirstName, &student.LastName, &student.Email, &student.Class)
 		if err != nil {
-			return nil, fmt.Errorf("repo.GetAllByCriteria: %w", err)
+			return nil, 0, fmt.Errorf("repo.GetAllByCriteria: %w", err)
 		}
 		students = append(students, student)
 	}
-
 	err = rows.Err()
 	if err != nil {
-		return nil, fmt.Errorf("repo.GetAllByCriteria: %w", err)
+		return nil, 0, fmt.Errorf("repo.GetAllByCriteria: %w", err)
 	}
-	return students, nil
+
+	var totalCount int
+	err = r.db.QueryRow(`SELECT COUNT(*) FROM students`).Scan(&totalCount)
+	if err != nil {
+		log.Println("repo.GetAllByCriteria:", err)
+		totalCount = 0
+	}
+	return students, totalCount, nil
 }
 
 func (r *StudentsRepository) SaveAll(students []models.Student) ([]models.Student, error) {

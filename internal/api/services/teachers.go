@@ -36,12 +36,12 @@ func (s *TeachersService) getByID(id int) (*models.Teacher, error) {
 	return teacher, nil
 }
 
-func (s *TeachersService) GetAllByCriteria(criteria models.Criteria) ([]models.Teacher, error) {
-	teachers, err := s.repo.GetAllByCriteria(criteria)
+func (s *TeachersService) GetAllByCriteria(criteria models.Criteria, pg *models.Pagination) ([]models.Teacher, int, error) {
+	teachers, totalCount, err := s.repo.GetAllByCriteria(criteria, pg)
 	if err != nil {
-		return nil, fmt.Errorf("service.GetAllByCriteria: %w", err)
+		return nil, 0, fmt.Errorf("service.GetAllByCriteria: %w", err)
 	}
-	return teachers, nil
+	return teachers, totalCount, nil
 }
 
 func (s *TeachersService) SaveAll(teachers []models.Teacher) ([]models.Teacher, error) {

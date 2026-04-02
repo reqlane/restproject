@@ -3,6 +3,7 @@ package repositories
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"restproject/internal/api/models"
 	"strings"
 )
@@ -25,7 +26,7 @@ func (r *TeachersRepository) GetByID(id int) (*models.Teacher, error) {
 	return &teacher, nil
 }
 
-func (r *TeachersRepository) GetAllByCriteria(criteria models.Criteria) ([]models.Teacher, error) {
+func (r *TeachersRepository) GetAllByCriteria(criteria models.Criteria, pg *models.Pagination) ([]models.Teacher, int, error) {
 	var query strings.Builder
 	query.WriteString(`SELECT id, first_name, last_name, email, class, subject FROM teachers WHERE 1=1`)
 
@@ -37,9 +38,13 @@ func (r *TeachersRepository) GetAllByCriteria(criteria models.Criteria) ([]model
 
 	addSorting(&query, criteria.Sortings, models.TeacherFieldNames)
 
+	offset := (pg.Page - 1) * pg.Limit
+	query.WriteString(" LIMIT ? OFFSET ?")
+	args = append(args, pg.Limit, offset)
+
 	rows, err := r.db.Query(query.String(), args...)
 	if err != nil {
-		return nil, fmt.Errorf("repo.GetAllByCriteria: %w", err)
+		return nil, 0, fmt.Errorf("repo.GetAllByCriteria: %w", err)
 	}
 	defer rows.Close()
 
@@ -48,16 +53,22 @@ func (r *TeachersRepository) GetAllByCriteria(criteria models.Criteria) ([]model
 		var teacher models.Teacher
 		err = rows.Scan(&teacher.ID, &teacher.FirstName, &teacher.LastName, &teacher.Email, &teacher.Class, &teacher.Subject)
 		if err != nil {
-			return nil, fmt.Errorf("repo.GetAllByCriteria: %w", err)
+			return nil, 0, fmt.Errorf("repo.GetAllByCriteria: %w", err)
 		}
 		teachers = append(teachers, teacher)
 	}
-
 	err = rows.Err()
 	if err != nil {
-		return nil, fmt.Errorf("repo.GetAllByCriteria: %w", err)
+		return nil, 0, fmt.Errorf("repo.GetAllByCriteria: %w", err)
 	}
-	return teachers, nil
+
+	var totalCount int
+	err = r.db.QueryRow(`SELECT COUNT(*) FROM teachers`).Scan(&totalCount)
+	if err != nil {
+		log.Println("repo.GetAllByCriteria:", err)
+		totalCount = 0
+	}
+	return teachers, totalCount, nil
 }
 
 func (r *TeachersRepository) SaveAll(teachers []models.Teacher) ([]models.Teacher, error) {

@@ -38,26 +38,31 @@ func (h *execsHandler) GetSingleExecHandler(w http.ResponseWriter, r *http.Reque
 
 // GET /execs/
 func (h *execsHandler) GetExecsHandler(w http.ResponseWriter, r *http.Request) {
-	criteria := models.Criteria{
+	pg := paginationFrom(r)
+	criteria := &models.Criteria{
 		Filters:  map[string]string{},
 		Sortings: r.URL.Query()["sortby"],
 	}
 	criteria.AddFilters(r.URL.Query(), models.ExecFieldNames)
 
-	execs, err := h.service.GetAllByCriteria(criteria)
+	execs, totalCount, err := h.service.GetAllByCriteria(criteria, pg)
 	if err != nil {
 		handleServiceError(w, err)
 		return
 	}
 
 	response := struct {
-		Status string                `json:"status"`
-		Count  int                   `json:"count"`
-		Data   []models.ExecResponse `json:"data"`
+		Status   string                `json:"status"`
+		Count    int                   `json:"count"`
+		Page     int                   `json:"page"`
+		PageSize int                   `json:"page_size"`
+		Data     []models.ExecResponse `json:"data"`
 	}{
-		Status: "success",
-		Count:  len(execs),
-		Data:   execs,
+		Status:   "success",
+		Count:    totalCount,
+		Page:     pg.Page,
+		PageSize: pg.Limit,
+		Data:     execs,
 	}
 
 	w.Header().Set("Content-Type", "application/json")

@@ -42,12 +42,12 @@ func (s *ExecsService) getByID(id int) (*models.Exec, error) {
 	return exec, nil
 }
 
-func (s *ExecsService) GetAllByCriteria(criteria models.Criteria) ([]models.ExecResponse, error) {
-	execs, err := s.repo.GetAllByCriteria(criteria)
+func (s *ExecsService) GetAllByCriteria(criteria *models.Criteria, pg *models.Pagination) ([]models.ExecResponse, int, error) {
+	execs, totalCount, err := s.repo.GetAllByCriteria(criteria, pg)
 	if err != nil {
-		return nil, fmt.Errorf("service.GetAllByCriteria: %w", err)
+		return nil, 0, fmt.Errorf("service.GetAllByCriteria: %w", err)
 	}
-	return models.Execs(execs).ToResponse(), nil
+	return models.Execs(execs).ToResponse(), totalCount, nil
 }
 
 func (s *ExecsService) SaveAll(execs []models.Exec) ([]models.ExecResponse, error) {

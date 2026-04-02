@@ -3,6 +3,7 @@ package repositories
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"restproject/internal/api/models"
 	"strings"
 )
@@ -55,7 +56,7 @@ func (r *ExecsRepository) GetByPasswordResetToken(token string) (*models.Exec, e
 	return &exec, nil
 }
 
-func (r *ExecsRepository) GetAllByCriteria(criteria models.Criteria) ([]models.Exec, error) {
+func (r *ExecsRepository) GetAllByCriteria(criteria *models.Criteria, pg *models.Pagination) ([]models.Exec, int, error) {
 	var query strings.Builder
 	query.WriteString(`SELECT id, first_name, last_name, email, username, user_created_at, inactive_status, role FROM execs WHERE 1=1`)
 
@@ -67,9 +68,13 @@ func (r *ExecsRepository) GetAllByCriteria(criteria models.Criteria) ([]models.E
 
 	addSorting(&query, criteria.Sortings, models.ExecFieldNames)
 
+	offset := (pg.Page - 1) * pg.Limit
+	query.WriteString(" LIMIT ? OFFSET ?")
+	args = append(args, pg.Limit, offset)
+
 	rows, err := r.db.Query(query.String(), args...)
 	if err != nil {
-		return nil, fmt.Errorf("repo.GetAllByCriteria: %w", err)
+		return nil, 0, fmt.Errorf("repo.GetAllByCriteria: %w", err)
 	}
 	defer rows.Close()
 
@@ -78,16 +83,22 @@ func (r *ExecsRepository) GetAllByCriteria(criteria models.Criteria) ([]models.E
 		var exec models.Exec
 		err = rows.Scan(&exec.ID, &exec.FirstName, &exec.LastName, &exec.Email, &exec.Username, &exec.UserCreatedAt, &exec.InactiveStatus, &exec.Role)
 		if err != nil {
-			return nil, fmt.Errorf("repo.GetAllByCriteria: %w", err)
+			return nil, 0, fmt.Errorf("repo.GetAllByCriteria: %w", err)
 		}
 		execs = append(execs, exec)
 	}
-
 	err = rows.Err()
 	if err != nil {
-		return nil, fmt.Errorf("repo.GetAllByCriteria: %w", err)
+		return nil, 0, fmt.Errorf("repo.GetAllByCriteria: %w", err)
 	}
-	return execs, nil
+
+	var totalCount int
+	err = r.db.QueryRow(`SELECT COUNT(*) FROM execs`).Scan(&totalCount)
+	if err != nil {
+		log.Println("repo.GetAllByCriteria:", err)
+		totalCount = 0
+	}
+	return execs, totalCount, nil
 }
 
 func (r *ExecsRepository) SaveAll(execs []models.Exec) ([]models.Exec, error) {

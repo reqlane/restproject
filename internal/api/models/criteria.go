@@ -41,3 +41,7 @@ func (c *Criteria) AddFilters(query url.Values, fieldNames []string) {
 		}
 	}
 }
+
+type Pagination struct {
+	Page, Limit int
+}

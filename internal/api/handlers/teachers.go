@@ -36,26 +36,31 @@ func (h *teachersHandler) GetSingleTeacherHandler(w http.ResponseWriter, r *http
 
 // GET /teachers/
 func (h *teachersHandler) GetTeachersHandler(w http.ResponseWriter, r *http.Request) {
+	pg := paginationFrom(r)
 	criteria := models.Criteria{
 		Filters:  map[string]string{},
 		Sortings: r.URL.Query()["sortby"],
 	}
 	criteria.AddFilters(r.URL.Query(), models.TeacherFieldNames)
 
-	teachers, err := h.service.GetAllByCriteria(criteria)
+	teachers, totalCount, err := h.service.GetAllByCriteria(criteria, pg)
 	if err != nil {
 		handleServiceError(w, err)
 		return
 	}
 
 	response := struct {
-		Status string           `json:"status"`
-		Count  int              `json:"count"`
-		Data   []models.Teacher `json:"data"`
+		Status   string           `json:"status"`
+		Count    int              `json:"count"`
+		Page     int              `json:"page"`
+		PageSize int              `json:"page_size"`
+		Data     []models.Teacher `json:"data"`
 	}{
-		Status: "success",
-		Count:  len(teachers),
-		Data:   teachers,
+		Status:   "success",
+		Count:    totalCount,
+		Page:     pg.Page,
+		PageSize: pg.Limit,
+		Data:     teachers,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
