@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"restproject/internal/api/models"
 	"restproject/internal/api/services"
+	"restproject/internal/auth"
 	"strconv"
 	"time"
 )
@@ -19,6 +20,12 @@ func NewExecsHandler(service *services.ExecsService) *execsHandler {
 }
 
 func (h *execsHandler) GetSingleExecHandler(w http.ResponseWriter, r *http.Request) {
+	err := auth.AuthorizeUser(r.Context().Value(auth.ContextKeyRole).(string), auth.Admin, auth.Manager, auth.Exec)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
 		http.Error(w, "invalid exec id", http.StatusBadRequest)
@@ -36,6 +43,12 @@ func (h *execsHandler) GetSingleExecHandler(w http.ResponseWriter, r *http.Reque
 }
 
 func (h *execsHandler) GetExecsHandler(w http.ResponseWriter, r *http.Request) {
+	err := auth.AuthorizeUser(r.Context().Value(auth.ContextKeyRole).(string), auth.Admin, auth.Manager, auth.Exec)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
 	pg := paginationFrom(r)
 	criteria := &models.Criteria{
 		Filters:  map[string]string{},
@@ -68,10 +81,16 @@ func (h *execsHandler) GetExecsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *execsHandler) PostExecsHandler(w http.ResponseWriter, r *http.Request) {
+	err := auth.AuthorizeUser(r.Context().Value(auth.ContextKeyRole).(string), auth.Admin)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
 	var newExecs []models.Exec
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
-	err := decoder.Decode(&newExecs)
+	err = decoder.Decode(&newExecs)
 	if err != nil {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
@@ -98,6 +117,12 @@ func (h *execsHandler) PostExecsHandler(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *execsHandler) PatchSingleExecHandler(w http.ResponseWriter, r *http.Request) {
+	err := auth.AuthorizeUser(r.Context().Value(auth.ContextKeyRole).(string), auth.Admin)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
 		http.Error(w, "invalid exec id", http.StatusBadRequest)
@@ -122,8 +147,14 @@ func (h *execsHandler) PatchSingleExecHandler(w http.ResponseWriter, r *http.Req
 }
 
 func (h *execsHandler) PatchExecsHandler(w http.ResponseWriter, r *http.Request) {
+	err := auth.AuthorizeUser(r.Context().Value(auth.ContextKeyRole).(string), auth.Admin)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
 	var updates []map[string]any
-	err := json.NewDecoder(r.Body).Decode(&updates)
+	err = json.NewDecoder(r.Body).Decode(&updates)
 	if err != nil {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
@@ -140,6 +171,12 @@ func (h *execsHandler) PatchExecsHandler(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *execsHandler) DeleteSingleExecHandler(w http.ResponseWriter, r *http.Request) {
+	err := auth.AuthorizeUser(r.Context().Value(auth.ContextKeyRole).(string), auth.Admin)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
 		http.Error(w, "invalid exec id", http.StatusBadRequest)
@@ -164,6 +201,12 @@ func (h *execsHandler) DeleteSingleExecHandler(w http.ResponseWriter, r *http.Re
 }
 
 func (h *execsHandler) UpdatePasswordHandler(w http.ResponseWriter, r *http.Request) {
+	err := auth.AuthorizeUser(r.Context().Value(auth.ContextKeyRole).(string), auth.Admin, auth.Manager, auth.Exec)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
 		http.Error(w, "invalid exec id", http.StatusBadRequest)

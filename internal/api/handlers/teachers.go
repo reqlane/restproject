@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"restproject/internal/api/models"
 	"restproject/internal/api/services"
+	"restproject/internal/auth"
 	"strconv"
 )
 
@@ -17,6 +18,18 @@ func NewTeachersHandler(service *services.TeachersService) *teachersHandler {
 }
 
 func (h *teachersHandler) GetSingleTeacherHandler(w http.ResponseWriter, r *http.Request) {
+	err := auth.AuthorizeUser(r.Context().Value(auth.ContextKeyRole).(string), auth.Admin, auth.Manager, auth.Exec)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
+	err = auth.AuthorizeUser(r.Context().Value(auth.ContextKeyRole).(string), auth.Admin, auth.Manager, auth.Exec)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
 		http.Error(w, "invalid teacher id", http.StatusBadRequest)
@@ -34,6 +47,12 @@ func (h *teachersHandler) GetSingleTeacherHandler(w http.ResponseWriter, r *http
 }
 
 func (h *teachersHandler) GetTeachersHandler(w http.ResponseWriter, r *http.Request) {
+	err := auth.AuthorizeUser(r.Context().Value(auth.ContextKeyRole).(string), auth.Admin, auth.Manager, auth.Exec)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
 	pg := paginationFrom(r)
 	criteria := models.Criteria{
 		Filters:  map[string]string{},
@@ -66,10 +85,16 @@ func (h *teachersHandler) GetTeachersHandler(w http.ResponseWriter, r *http.Requ
 }
 
 func (h *teachersHandler) PostTeachersHandler(w http.ResponseWriter, r *http.Request) {
+	err := auth.AuthorizeUser(r.Context().Value(auth.ContextKeyRole).(string), auth.Admin)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
 	var newTeachers []models.Teacher
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
-	err := decoder.Decode(&newTeachers)
+	err = decoder.Decode(&newTeachers)
 	if err != nil {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
@@ -96,6 +121,12 @@ func (h *teachersHandler) PostTeachersHandler(w http.ResponseWriter, r *http.Req
 }
 
 func (h *teachersHandler) PutSingleTeacherHandler(w http.ResponseWriter, r *http.Request) {
+	err := auth.AuthorizeUser(r.Context().Value(auth.ContextKeyRole).(string), auth.Admin, auth.Exec)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
 		http.Error(w, "invalid teacher id", http.StatusBadRequest)
@@ -122,6 +153,12 @@ func (h *teachersHandler) PutSingleTeacherHandler(w http.ResponseWriter, r *http
 }
 
 func (h *teachersHandler) PatchSingleTeacherHandler(w http.ResponseWriter, r *http.Request) {
+	err := auth.AuthorizeUser(r.Context().Value(auth.ContextKeyRole).(string), auth.Admin, auth.Exec)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
 		http.Error(w, "invalid teacher id", http.StatusBadRequest)
@@ -146,8 +183,14 @@ func (h *teachersHandler) PatchSingleTeacherHandler(w http.ResponseWriter, r *ht
 }
 
 func (h *teachersHandler) PatchTeachersHandler(w http.ResponseWriter, r *http.Request) {
+	err := auth.AuthorizeUser(r.Context().Value(auth.ContextKeyRole).(string), auth.Admin, auth.Exec)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
 	var updates []map[string]any
-	err := json.NewDecoder(r.Body).Decode(&updates)
+	err = json.NewDecoder(r.Body).Decode(&updates)
 	if err != nil {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
@@ -164,6 +207,12 @@ func (h *teachersHandler) PatchTeachersHandler(w http.ResponseWriter, r *http.Re
 }
 
 func (h *teachersHandler) DeleteSingleTeacherHandler(w http.ResponseWriter, r *http.Request) {
+	err := auth.AuthorizeUser(r.Context().Value(auth.ContextKeyRole).(string), auth.Admin)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
 		http.Error(w, "invalid teacher id", http.StatusBadRequest)
@@ -188,8 +237,14 @@ func (h *teachersHandler) DeleteSingleTeacherHandler(w http.ResponseWriter, r *h
 }
 
 func (h *teachersHandler) DeleteTeachersHandler(w http.ResponseWriter, r *http.Request) {
+	err := auth.AuthorizeUser(r.Context().Value(auth.ContextKeyRole).(string), auth.Admin)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
 	var ids []int
-	err := json.NewDecoder(r.Body).Decode(&ids)
+	err = json.NewDecoder(r.Body).Decode(&ids)
 	if err != nil {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
@@ -213,6 +268,12 @@ func (h *teachersHandler) DeleteTeachersHandler(w http.ResponseWriter, r *http.R
 }
 
 func (h *teachersHandler) GetStudentsByTeacherID(w http.ResponseWriter, r *http.Request) {
+	err := auth.AuthorizeUser(r.Context().Value(auth.ContextKeyRole).(string), auth.Admin, auth.Manager, auth.Exec)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
 		http.Error(w, "invalid teacher id", http.StatusBadRequest)
@@ -240,6 +301,12 @@ func (h *teachersHandler) GetStudentsByTeacherID(w http.ResponseWriter, r *http.
 }
 
 func (h *teachersHandler) GetStudentsCountByTeacherID(w http.ResponseWriter, r *http.Request) {
+	err := auth.AuthorizeUser(r.Context().Value(auth.ContextKeyRole).(string), auth.Admin, auth.Manager, auth.Exec)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
 		http.Error(w, "invalid teacher id", http.StatusBadRequest)

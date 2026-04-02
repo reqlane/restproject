@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"restproject/internal/api/models"
 	"restproject/internal/api/services"
+	"restproject/internal/auth"
 	"strconv"
 )
 
@@ -17,6 +18,12 @@ func NewStudentsHandler(service *services.StudentsService) *studentsHandler {
 }
 
 func (h *studentsHandler) GetSingleStudentHandler(w http.ResponseWriter, r *http.Request) {
+	err := auth.AuthorizeUser(r.Context().Value(auth.ContextKeyRole).(string), auth.Admin, auth.Manager, auth.Exec)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
 		http.Error(w, "invalid student id", http.StatusBadRequest)
@@ -34,6 +41,12 @@ func (h *studentsHandler) GetSingleStudentHandler(w http.ResponseWriter, r *http
 }
 
 func (h *studentsHandler) GetStudentsHandler(w http.ResponseWriter, r *http.Request) {
+	err := auth.AuthorizeUser(r.Context().Value(auth.ContextKeyRole).(string), auth.Admin, auth.Manager, auth.Exec)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
 	pg := paginationFrom(r)
 	criteria := &models.Criteria{
 		Filters:  map[string]string{},
@@ -66,10 +79,16 @@ func (h *studentsHandler) GetStudentsHandler(w http.ResponseWriter, r *http.Requ
 }
 
 func (h *studentsHandler) PostStudentsHandler(w http.ResponseWriter, r *http.Request) {
+	err := auth.AuthorizeUser(r.Context().Value(auth.ContextKeyRole).(string), auth.Admin)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
 	var newStudents []models.Student
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
-	err := decoder.Decode(&newStudents)
+	err = decoder.Decode(&newStudents)
 	if err != nil {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
@@ -96,6 +115,12 @@ func (h *studentsHandler) PostStudentsHandler(w http.ResponseWriter, r *http.Req
 }
 
 func (h *studentsHandler) PutSingleStudentHandler(w http.ResponseWriter, r *http.Request) {
+	err := auth.AuthorizeUser(r.Context().Value(auth.ContextKeyRole).(string), auth.Admin, auth.Exec)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
 		http.Error(w, "invalid student id", http.StatusBadRequest)
@@ -122,6 +147,12 @@ func (h *studentsHandler) PutSingleStudentHandler(w http.ResponseWriter, r *http
 }
 
 func (h *studentsHandler) PatchSingleStudentHandler(w http.ResponseWriter, r *http.Request) {
+	err := auth.AuthorizeUser(r.Context().Value(auth.ContextKeyRole).(string), auth.Admin, auth.Exec)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
 		http.Error(w, "invalid student id", http.StatusBadRequest)
@@ -146,8 +177,14 @@ func (h *studentsHandler) PatchSingleStudentHandler(w http.ResponseWriter, r *ht
 }
 
 func (h *studentsHandler) PatchStudentsHandler(w http.ResponseWriter, r *http.Request) {
+	err := auth.AuthorizeUser(r.Context().Value(auth.ContextKeyRole).(string), auth.Admin, auth.Exec)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
 	var updates []map[string]any
-	err := json.NewDecoder(r.Body).Decode(&updates)
+	err = json.NewDecoder(r.Body).Decode(&updates)
 	if err != nil {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
@@ -164,6 +201,12 @@ func (h *studentsHandler) PatchStudentsHandler(w http.ResponseWriter, r *http.Re
 }
 
 func (h *studentsHandler) DeleteSingleStudentHandler(w http.ResponseWriter, r *http.Request) {
+	err := auth.AuthorizeUser(r.Context().Value(auth.ContextKeyRole).(string), auth.Admin)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
 		http.Error(w, "invalid student id", http.StatusBadRequest)
@@ -188,8 +231,14 @@ func (h *studentsHandler) DeleteSingleStudentHandler(w http.ResponseWriter, r *h
 }
 
 func (h *studentsHandler) DeleteStudentsHandler(w http.ResponseWriter, r *http.Request) {
+	err := auth.AuthorizeUser(r.Context().Value(auth.ContextKeyRole).(string), auth.Admin)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
 	var ids []int
-	err := json.NewDecoder(r.Body).Decode(&ids)
+	err = json.NewDecoder(r.Body).Decode(&ids)
 	if err != nil {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
