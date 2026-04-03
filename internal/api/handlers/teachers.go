@@ -24,12 +24,6 @@ func (h *teachersHandler) GetSingleTeacherHandler(w http.ResponseWriter, r *http
 		return
 	}
 
-	err = auth.AuthorizeUser(r.Context().Value(auth.ContextKeyRole).(string), auth.Admin, auth.Manager, auth.Exec)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusForbidden)
-		return
-	}
-
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
 		http.Error(w, "invalid teacher id", http.StatusBadRequest)

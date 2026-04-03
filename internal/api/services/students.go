@@ -47,8 +47,8 @@ func (s *StudentsService) GetAllByCriteria(criteria *models.Criteria, pg *models
 
 func (s *StudentsService) SaveAll(students []models.Student) ([]models.Student, error) {
 	for _, student := range students {
-		if err := checkBlankFields(student); err != nil {
-			return nil, fmt.Errorf("service.SaveAll: %w", err)
+		if err := validate.Struct(student); err != nil {
+			return nil, fmt.Errorf("service.SaveAll: %w", handleValidationError(err))
 		}
 	}
 
@@ -63,8 +63,8 @@ func (s *StudentsService) SaveAll(students []models.Student) ([]models.Student, 
 }
 
 func (s *StudentsService) Replace(id int, updatedStudent *models.Student) (*models.Student, error) {
-	if err := checkBlankFields(*updatedStudent); err != nil {
-		return nil, fmt.Errorf("service.Replace: %w", err)
+	if err := validate.Struct(*updatedStudent); err != nil {
+		return nil, fmt.Errorf("service.Replace: %w", handleValidationError(err))
 	}
 
 	dbStudent, err := s.getByID(id)
@@ -88,6 +88,10 @@ func (s *StudentsService) Update(id int, update map[string]any) (*models.Student
 
 	if err = applyUpdates(dbStudent, update); err != nil {
 		return nil, fmt.Errorf("service.Update: %w", err)
+	}
+
+	if err = validate.Struct(dbStudent); err != nil {
+		return nil, fmt.Errorf("service.Update: %w", handleValidationError(err))
 	}
 
 	updatedStudent, err := s.repo.Update(dbStudent)
@@ -115,6 +119,9 @@ func (s *StudentsService) UpdateAll(updates []map[string]any) ([]models.Student,
 			return nil, fmt.Errorf("service.UpdateAll: %w", err)
 		}
 
+		if err = validate.Struct(dbStudent); err != nil {
+			return nil, fmt.Errorf("service.Update: %w", handleValidationError(err))
+		}
 		updatedStudents = append(updatedStudents, *dbStudent)
 	}
 

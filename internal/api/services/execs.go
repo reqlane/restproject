@@ -52,8 +52,8 @@ func (s *ExecsService) GetAllByCriteria(criteria *models.Criteria, pg *models.Pa
 
 func (s *ExecsService) SaveAll(execs []models.Exec) ([]models.ExecResponse, error) {
 	for i, exec := range execs {
-		if err := checkBlankFields(exec); err != nil {
-			return nil, fmt.Errorf("service.SaveAll: %w", err)
+		if err := validate.Struct(exec); err != nil {
+			return nil, fmt.Errorf("service.SaveAll: %w", handleValidationError(err))
 		}
 		encodedPassword, err := encodePassword(exec.Password)
 		if err != nil {
@@ -77,6 +77,10 @@ func (s *ExecsService) Update(id int, update map[string]any) (*models.ExecRespon
 
 	if err = applyUpdates(dbExec, update); err != nil {
 		return nil, fmt.Errorf("service.Update: %w", err)
+	}
+
+	if err = validate.Struct(dbExec); err != nil {
+		return nil, fmt.Errorf("service.Update: %w", handleValidationError(err))
 	}
 
 	updatedExec, err := s.repo.Update(dbExec)
@@ -104,6 +108,9 @@ func (s *ExecsService) UpdateAll(updates []map[string]any) ([]models.ExecRespons
 			return nil, fmt.Errorf("service.UpdateAll: %w", err)
 		}
 
+		if err = validate.Struct(dbExec); err != nil {
+			return nil, fmt.Errorf("service.Update: %w", handleValidationError(err))
+		}
 		updatedExecs = append(updatedExecs, *dbExec)
 	}
 
@@ -128,8 +135,8 @@ func (s *ExecsService) Delete(id int) error {
 }
 
 func (s *ExecsService) UpdatePassword(id int, req *models.UpdatePasswordRequest) (string, error) {
-	if req.CurrentPassword == "" || req.NewPassword == "" {
-		return "", apperrors.NewError(apperrors.ErrValidation, errors.New("current and new passwords are required"))
+	if err := validate.Struct(req); err != nil {
+		return "", fmt.Errorf("service.UpdatePassword: %w", handleValidationError(err))
 	}
 
 	exec, err := s.getByID(id)
@@ -164,8 +171,8 @@ func (s *ExecsService) UpdatePassword(id int, req *models.UpdatePasswordRequest)
 }
 
 func (s *ExecsService) Login(credentials *models.ExecCredentials) (string, error) {
-	if credentials.Username == "" || credentials.Password == "" {
-		return "", fmt.Errorf("service.Login: %w", apperrors.NewError(apperrors.ErrValidation, errors.New("username and password are required")))
+	if err := validate.Struct(credentials); err != nil {
+		return "", fmt.Errorf("service.Login: %w", handleValidationError(err))
 	}
 
 	exec, err := s.repo.GetByUsername(credentials.Username)
@@ -194,8 +201,8 @@ func (s *ExecsService) Login(credentials *models.ExecCredentials) (string, error
 }
 
 func (s *ExecsService) ForgotPassword(email string) error {
-	if email == "" {
-		return fmt.Errorf("service.ForgotPassword: %w", apperrors.NewError(apperrors.ErrValidation, errors.New("user email is required")))
+	if err := validate.Var(email, "required,email"); err != nil {
+		return fmt.Errorf("service.ForgotPassword: %w", apperrors.NewError(apperrors.ErrValidation, errors.New("invalid email")))
 	}
 	exec, err := s.repo.GetByEmail(email)
 	if err != nil {
@@ -245,11 +252,8 @@ func (s *ExecsService) ForgotPassword(email string) error {
 }
 
 func (s *ExecsService) ResetPassword(req *models.ResetPasswordRequest) error {
-	if req.NewPassword == "" || req.ConfirmPassword == "" {
-		return apperrors.NewError(apperrors.ErrValidation, errors.New("passwords are required"))
-	}
-	if req.NewPassword != req.ConfirmPassword {
-		return apperrors.NewError(apperrors.ErrValidation, errors.New("passwords should match"))
+	if err := validate.Struct(req); err != nil {
+		return handleValidationError(err)
 	}
 	encodedPassword, err := encodePassword(req.NewPassword)
 	if err != nil {

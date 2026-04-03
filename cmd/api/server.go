@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/tls"
-	"embed"
 	"fmt"
 	"log"
 	"net/http"
@@ -15,48 +14,12 @@ import (
 	"github.com/joho/godotenv"
 )
 
-// embedding .env into binary (Only for development)
-
-//go:embed .env
-var envFile embed.FS
-
-func loadEnvFromEmbeddedFile() {
-	content, err := envFile.ReadFile(".env")
-	if err != nil {
-		log.Fatalf("Error reading .env file: %v", err)
-	}
-
-	tempFile, err := os.CreateTemp("", ".env")
-	if err != nil {
-		log.Fatalf("Error creating temp .env file: %v", err)
-	}
-	defer os.Remove(tempFile.Name())
-
-	_, err = tempFile.Write(content)
-	if err != nil {
-		log.Fatalf("Error writing to temp .env file: %v", err)
-	}
-
-	err = tempFile.Close()
-	if err != nil {
-		log.Fatalf("Error closing temp .env file: %v", err)
-	}
-
-	err = godotenv.Load(tempFile.Name())
-	if err != nil {
-		log.Fatalf("Error loading temp .env file: %v", err)
-	}
-}
-
 func main() {
-	// Only in production, for running source code
-	// err := godotenv.Load(".env")
-	// if err != nil {
-	// 	log.Println("Error:", err)
-	// 	return
-	// }
-
-	loadEnvFromEmbeddedFile()
+	err := godotenv.Load("../../.env")
+	if err != nil {
+		log.Println("Error:", err)
+		return
+	}
 
 	db, err := db.ConnectDb()
 	if err != nil {
@@ -66,10 +29,8 @@ func main() {
 	defer db.Close()
 
 	port := os.Getenv("SERVER_PORT")
-	// cert := "cert.pem"
-	// key := "key.pem"
-	cert := os.Getenv("CERT_FILE")
-	key := os.Getenv("KEY_FILE")
+	cert := "cert.pem"
+	key := "key.pem"
 
 	app := routers.NewApp(db)
 	mux := app.Router()

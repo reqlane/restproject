@@ -15,17 +15,19 @@ import (
 	"strings"
 
 	"github.com/go-mail/mail/v2"
+	"github.com/go-playground/validator/v10"
 	"golang.org/x/crypto/argon2"
 )
 
-func checkBlankFields(value any) error {
-	val := reflect.ValueOf(value)
-	for _, field := range val.Fields() {
-		if field.Kind() == reflect.String && field.String() == "" {
-			return apperrors.NewError(apperrors.ErrValidation, errors.New("all fields are required"))
-		}
+var (
+	validate = validator.New(validator.WithRequiredStructEnabled())
+)
+
+func handleValidationError(err error) error {
+	if ve, ok := err.(validator.ValidationErrors); ok {
+		return apperrors.NewError(apperrors.ErrValidation, fmt.Errorf("invalid field: %s", ve[0].Field()))
 	}
-	return nil
+	return errors.New("internal server error")
 }
 
 func extractID(update map[string]any) (int, error) {
@@ -55,7 +57,7 @@ func applyUpdates(model models.ModelWithID, update map[string]any) error {
 	modelType := modelVal.Type()
 
 	for k, v := range update {
-		if k == "id" {
+		if k == "id" || k == "password" {
 			continue
 		}
 		for i := 0; i < modelVal.NumField(); i++ {
@@ -79,10 +81,6 @@ func applyUpdates(model models.ModelWithID, update map[string]any) error {
 }
 
 func encodePassword(password string) (string, error) {
-	if len(password) < 8 {
-		return "", apperrors.NewError(apperrors.ErrValidation, errors.New("password must be at least 8 characters"))
-	}
-
 	salt := make([]byte, 16)
 	_, err := rand.Read(salt)
 	if err != nil {
